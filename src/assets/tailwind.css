@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #1b9e77;
+  --color-brand-dark: #147a5c;
+  --color-brand-soft: #e7f6f1;
+  --color-ink: #111827;
+  --color-muted: #6b7280;
+  --color-line: #e5e7eb;
+  --color-danger: #b42318;
+}
+
+@layer components {
+  .field {
+    @apply rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-brand;
+  }
+  .btn-primary {
+    @apply rounded-md bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-60;
+  }
+  .btn-ghost {
+    @apply rounded-md border border-line bg-white px-3 py-2 text-sm hover:bg-brand-soft;
+  }
+}
