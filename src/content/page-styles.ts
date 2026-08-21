@@ -2,7 +2,7 @@ export const PAGE_CSS = `
 .wamofa-toolbar {
   position: absolute;
   top: 50%;
-  right: -60px;
+  right: -76px;
   z-index: 50;
   display: flex;
   flex-direction: row;
@@ -15,7 +15,7 @@ export const PAGE_CSS = `
 }
 .wamofa-toolbar.is-out {
   right: auto;
-  left: -60px;
+  left: -76px;
   flex-direction: row;
 }
 .message-in:has(.wamofa-toolbar),
