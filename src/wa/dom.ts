@@ -323,13 +323,28 @@ function normalizeBubble(el: HTMLElement): HTMLElement | null {
 
 export function isOutgoing(el: HTMLElement): boolean {
   const row = normalizeBubble(el) ?? el;
+
+  // Check class names
   if (row.classList.contains('message-out') || row.closest('.message-out')) return true;
   if (row.classList.contains('message-in') || row.closest('.message-in')) return false;
+
+  // Check data-id prefix
   const id = row.getAttribute('data-id') || '';
   if (id.startsWith('true_')) return true;
   if (id.startsWith('false_')) return false;
+
+  // Check aria-label
   const aria = row.getAttribute('aria-label') ?? '';
   if (/you|sent|outgoing|你/i.test(aria)) return true;
+
+  // Additional check: right-aligned messages are usually outgoing
+  // WhatsApp uses flex justify-end for outgoing messages
+  const parent = row.parentElement;
+  if (parent) {
+    const style = getComputedStyle(parent);
+    if (style.justifyContent === 'flex-end' || style.justifyContent === 'end') return true;
+  }
+
   return false;
 }
 
