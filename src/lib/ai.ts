@@ -132,7 +132,7 @@ export async function transcribeAudio(
     throw new Error(
       provider.supportsTranscribe
         ? '请填写语音转写模型名'
-        : `${provider.name} 仅支持文本翻译，请改用 OpenAI 或硅基流动做语音转写`,
+        : `${provider.name} 仅支持文本翻译，请改用 OpenAI 做语音转写`,
     );
   }
 

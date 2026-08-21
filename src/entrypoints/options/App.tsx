@@ -217,7 +217,7 @@ export default function App() {
         </label>
         <p className="text-xs text-muted">{provider.hint}</p>
         {!provider.supportsTranscribe ? (
-          <p className="text-xs text-amber-700">该厂商仅文本翻译，语音转写请改用 OpenAI 或硅基流动。</p>
+          <p className="text-xs text-amber-700">该厂商仅文本翻译，语音转写请改用 OpenAI。</p>
         ) : null}
         <label className="grid gap-1 text-sm">
           鉴权方式
