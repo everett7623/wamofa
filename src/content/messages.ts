@@ -63,14 +63,23 @@ function cacheKey(msgId: string): string {
 }
 
 function normalizeToolbarHost(bubble: HTMLElement): HTMLElement {
+  // 优先查找文本容器
   const text = bubble.querySelector<HTMLElement>(
     'span.selectable-text.copyable-text, span.selectable-text, .copyable-text',
   );
-  return (
-    text?.closest<HTMLElement>('[data-pre-plain-text]') ??
-    text?.parentElement ??
-    bubble
+
+  if (text) {
+    // 文本消息：挂载到 [data-pre-plain-text] 或其父元素
+    return text.closest<HTMLElement>('[data-pre-plain-text]') ?? text.parentElement ?? bubble;
+  }
+
+  // 文档消息（PDF/图片/视频等）：查找消息内容容器
+  // 通常在 .message-out 或 .message-in 的第一个直接子元素
+  const messageContainer = bubble.querySelector<HTMLElement>(
+    '[data-testid="msg-container"], .copyable-area, [role="row"] > div:first-child',
   );
+
+  return messageContainer ?? bubble;
 }
 
 export function enhanceMessages(state: PublicState): void {
