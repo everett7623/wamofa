@@ -20,7 +20,7 @@ export interface ExportData {
 export async function exportData(): Promise<string> {
   const state = await getState();
   const data: ExportData = {
-    version: '0.2.0',
+    version: '0.2.1',
     exportTime: new Date().toISOString(),
     chats: state.chats,
     templates: state.templates,
