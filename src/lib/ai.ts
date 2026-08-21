@@ -43,9 +43,23 @@ function buildAuthHeaders(settings: AiSettings, forForm = false): HeadersInit {
 }
 
 async function readError(res: Response): Promise<string> {
-  const body = await res.text();
-  const trimmed = body.replace(/\s+/g, ' ').slice(0, 240);
-  return `HTTP ${res.status}${trimmed ? `: ${trimmed}` : ''}`;
+  try {
+    const contentType = res.headers.get('content-type') || '';
+
+    // 如果返回 HTML，说明可能是鉴权错误或 URL 错误
+    if (contentType.includes('text/html')) {
+      return `HTTP ${res.status}: API 返回 HTML 而非 JSON，请检查：
+1. Base URL 是否正确（应以 /v1 结尾）
+2. ${res.status === 401 || res.status === 403 ? 'API Key 或 Project Key 是否正确' : 'API 端点是否可访问'}
+3. 鉴权方式是否匹配（API Key vs Project Key）`;
+    }
+
+    const body = await res.text();
+    const trimmed = body.replace(/\s+/g, ' ').slice(0, 240);
+    return `HTTP ${res.status}${trimmed ? `: ${trimmed}` : ''}`;
+  } catch {
+    return `HTTP ${res.status}: 无法读取错误信息`;
+  }
 }
 
 export async function translateText(
@@ -55,37 +69,56 @@ export async function translateText(
 ): Promise<string> {
   requireSettings(settings);
   const target = langLabel(targetLang);
-  const res = await fetch(joinUrl(settings.baseUrl, 'chat/completions'), {
-    method: 'POST',
-    headers: buildAuthHeaders(settings),
-    body: JSON.stringify({
-      model: settings.model.trim(),
-      temperature: 0.1,
-      messages: [
-        {
-          role: 'system',
-          content:
-            `You are a translator. Translate the user's message into ${target}. ` +
-            'Return only the translation, with no quotes, labels, or explanation. ' +
-            'If the text is already in the target language, return it unchanged. ' +
-            'Preserve names, numbers, emojis, and line breaks. ' +
-            'Use natural conversational phrasing for chat context (including negotiation tone) while preserving the original meaning and intent.',
-        },
-        { role: 'user', content: text },
-      ],
-    }),
-  });
-  if (!res.ok) {
-    throw new Error(await readError(res));
+
+  try {
+    const res = await fetch(joinUrl(settings.baseUrl, 'chat/completions'), {
+      method: 'POST',
+      headers: buildAuthHeaders(settings),
+      body: JSON.stringify({
+        model: settings.model.trim(),
+        temperature: 0.1,
+        messages: [
+          {
+            role: 'system',
+            content:
+              `You are a translator. Translate the user's message into ${target}. ` +
+              'Return only the translation, with no quotes, labels, or explanation. ' +
+              'If the text is already in the target language, return it unchanged. ' +
+              'Preserve names, numbers, emojis, and line breaks. ' +
+              'Use natural conversational phrasing for chat context (including negotiation tone) while preserving the original meaning and intent.',
+          },
+          { role: 'user', content: text },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error(await readError(res));
+    }
+
+    // 检查响应是否为 JSON
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error(`API 返回非 JSON 格式 (${contentType})，请检查：
+1. Base URL 是否正确（应以 /v1 结尾，如 https://api.example.com/v1）
+2. 鉴权配置是否正确
+3. 服务商是否支持 OpenAI 兼容格式`);
+    }
+
+    const data = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    const content = data.choices?.[0]?.message?.content?.trim();
+    if (!content) {
+      throw new Error('模型没有返回译文');
+    }
+    return content;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(`翻译失败：${String(error)}`);
   }
-  const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const content = data.choices?.[0]?.message?.content?.trim();
-  if (!content) {
-    throw new Error('模型没有返回译文');
-  }
-  return content;
 }
 
 export async function transcribeAudio(
