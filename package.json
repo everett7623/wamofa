@@ -2,7 +2,7 @@
   "name": "wamofa",
   "description": "WAMofa — WhatsApp Web 安全辅助：AI 翻译、快捷回复、备注与语音转写",
   "private": true,
-  "version": "0.2.2",
+  "version": "0.2.3",
   "type": "module",
   "scripts": {
     "dev": "wxt",
