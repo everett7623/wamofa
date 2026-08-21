@@ -217,7 +217,7 @@ export default function App() {
         </label>
         <p className="text-xs text-muted">{provider.hint}</p>
         {!provider.supportsTranscribe ? (
-          <p className="text-xs text-amber-700">该厂商仅文本翻译，语音转写请改用 OpenAI。</p>
+          <p className="text-xs text-amber-700">该厂商仅文本翻译，语音转写请改用 OpenAI（或自定义 Whisper API）。</p>
         ) : null}
         <label className="grid gap-1 text-sm">
           鉴权方式
@@ -235,24 +235,20 @@ export default function App() {
             }
           >
             <option value="apiKey">API Key</option>
-            <option value="projectKey">Project Key（Sub2API/NewAPI）</option>
+            <option value="projectKey">Project Key（中转服务）</option>
           </select>
         </label>
         {state.settings.authMode === 'projectKey' ? (
           <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded text-xs">
-            <strong className="block mb-1">🔑 Project Key 模式配置提示</strong>
+            <strong className="block mb-1">🔑 Project Key 模式</strong>
             <p className="text-muted mb-2">
-              适用于 Sub2API、NewAPI 等中转服务。常见配置：
+              适用于 API 中转服务。通常配置：
             </p>
             <ul className="list-disc list-inside text-muted space-y-1">
-              <li>Base URL 必须以 <code className="bg-white dark:bg-gray-800 px-1 rounded">/v1</code> 结尾（如 <code className="bg-white dark:bg-gray-800 px-1 rounded">https://api.example.com/v1</code>）</li>
-              <li>Header 名称通常是 <code className="bg-white dark:bg-gray-800 px-1 rounded">Authorization</code></li>
-              <li>格式通常选 <code className="bg-white dark:bg-gray-800 px-1 rounded">Bearer &lt;ProjectKey&gt;</code></li>
-              <li>部分服务使用原始值（Raw token），请参考服务商文档</li>
+              <li>Header: <code className="bg-white dark:bg-gray-800 px-1 rounded">Authorization</code></li>
+              <li>格式: <code className="bg-white dark:bg-gray-800 px-1 rounded">Bearer &lt;ProjectKey&gt;</code></li>
+              <li>Base URL: 填写你的中转服务域名（如 <code className="bg-white dark:bg-gray-800 px-1 rounded">https://api.your-domain.com/v1</code>）</li>
             </ul>
-            <p className="text-amber-700 dark:text-amber-400 mt-2">
-              ⚠️ 如果测试连接返回 HTML 错误，请检查 Base URL 和鉴权配置
-            </p>
           </div>
         ) : null}
         {state.settings.authMode === 'projectKey' ? (

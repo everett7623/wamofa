@@ -10,6 +10,7 @@
   --wm-canvas: #f5f8f7;
   --wm-danger: #b42318;
   --wm-shadow: 0 18px 55px rgba(13, 45, 37, 0.16);
+  --wm-sidebar-width: 68px;
 }
 
 .wm-side-panel,
@@ -54,7 +55,7 @@
 .wm-right-rail {
   position: fixed;
   inset: 0 0 0 auto;
-  width: 68px;
+  width: var(--wm-sidebar-width);
   display: flex;
   flex-direction: column;
   align-items: center;

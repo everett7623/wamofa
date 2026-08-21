@@ -36,7 +36,13 @@ function buildAuthHeaders(settings: AiSettings, forForm = false): HeadersInit {
 
     headers[headerName] = value;
   } else {
-    headers.Authorization = `Bearer ${settings.apiKey.trim()}`;
+    // Claude uses x-api-key instead of Authorization
+    if (settings.providerId === 'claude') {
+      headers['x-api-key'] = settings.apiKey.trim();
+      headers['anthropic-version'] = '2023-06-01';
+    } else {
+      headers['Authorization'] = `Bearer ${settings.apiKey.trim()}`;
+    }
   }
 
   return headers;
