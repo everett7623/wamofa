@@ -1,7 +1,19 @@
 export const PAGE_CSS = `
 /* 为 WhatsApp 主内容区添加右侧 padding，避免被工具栏遮挡 */
 #app {
-  padding-right: 68px !important;
+  padding-right: 0 !important;
+}
+
+/* 为聊天容器添加右侧边距 */
+#main {
+  margin-right: 68px !important;
+}
+
+/* 确保所有主要内容区域不被遮挡 */
+[data-testid="conversation-panel-wrapper"],
+[data-testid="conversation-panel-body"],
+footer[data-testid="conversation-compose-box-container"] {
+  padding-right: 0 !important;
 }
 
 .wamofa-toolbar {
