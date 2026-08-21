@@ -1,4 +1,9 @@
 export const PAGE_CSS = `
+/* 为 WhatsApp 主内容区添加右侧 padding，避免被工具栏遮挡 */
+#app {
+  padding-right: 68px !important;
+}
+
 .wamofa-toolbar {
   position: absolute;
   top: 50%;
