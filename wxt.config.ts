@@ -14,7 +14,7 @@ export default defineConfig({
   manifest: {
     name: 'WAMofa',
     description:
-      'WhatsApp Web 安全辅助：AI 翻译、快捷回复、备注与语音转写。纯本地，不群发。',
+      'WhatsApp Web 助手：AI 翻译、客户备注标签、快捷回复、语音转写。本地存储，不群发。',
     version: '0.2.3',
     homepage_url: 'https://wamofa.com',
     permissions: ['storage'],
