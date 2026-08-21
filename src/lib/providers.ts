@@ -8,12 +8,19 @@ export interface ProviderPreset {
   hint: string;
 }
 
+export interface ProviderSeedSettings {
+  providerId: string;
+  baseUrl: string;
+  model: string;
+  transcribeModel: string;
+}
+
 export const PROVIDERS: ProviderPreset[] = [
   {
     id: 'openai',
     name: 'OpenAI',
     baseUrl: 'https://api.openai.com/v1',
-    model: 'gpt-4.1-mini',
+    model: 'gpt-4o-mini',
     transcribeModel: 'whisper-1',
     supportsTranscribe: true,
     hint: '官方 OpenAI，支持文本翻译与 Whisper 转写。',
@@ -31,28 +38,46 @@ export const PROVIDERS: ProviderPreset[] = [
     id: 'gemini',
     name: 'Gemini',
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-2.0-flash-exp',
     transcribeModel: '',
     supportsTranscribe: false,
     hint: 'Google OpenAI 兼容接口。仅文本翻译。',
   },
   {
-    id: 'groq',
-    name: 'Groq',
-    baseUrl: 'https://api.groq.com/openai/v1',
-    model: 'llama-3.3-70b-versatile',
-    transcribeModel: 'whisper-large-v3',
-    supportsTranscribe: true,
-    hint: '速度快，支持文本与 Whisper 转写。',
+    id: 'grok',
+    name: 'Grok',
+    baseUrl: 'https://api.x.ai/v1',
+    model: 'grok-2-latest',
+    transcribeModel: '',
+    supportsTranscribe: false,
+    hint: 'xAI 官方接口，使用 Grok 2 进行文本翻译。',
   },
   {
     id: 'siliconflow',
     name: '硅基流动',
     baseUrl: 'https://api.siliconflow.cn/v1',
-    model: 'deepseek-ai/DeepSeek-V3',
+    model: 'Qwen/Qwen2.5-7B-Instruct',
     transcribeModel: 'FunAudioLLM/SenseVoiceSmall',
     supportsTranscribe: true,
     hint: '国内可用。文本翻译 + SenseVoice 转写。',
+  },
+  {
+    id: 'sub2api',
+    name: 'Sub2API',
+    baseUrl: '',
+    model: 'gpt-4o-mini',
+    transcribeModel: 'whisper-1',
+    supportsTranscribe: true,
+    hint: 'Sub2API 代理服务，使用 Project Key 鉴权。填写你的 Sub2API 域名和 Project Key。',
+  },
+  {
+    id: 'newapi',
+    name: 'NewAPI',
+    baseUrl: '',
+    model: 'gpt-4o-mini',
+    transcribeModel: 'whisper-1',
+    supportsTranscribe: true,
+    hint: 'NewAPI 中转服务，使用 API Key 或 Project Key 鉴权。填写你的 NewAPI 域名。',
   },
   {
     id: 'custom',
@@ -65,12 +90,27 @@ export const PROVIDERS: ProviderPreset[] = [
   },
 ];
 
+export function normalizeProviderId(id: string): string {
+  return id === 'groq' || id === 'grop' ? 'grok' : id;
+}
+
 export function getProvider(id: string): ProviderPreset {
-  const found = PROVIDERS.find((item) => item.id === id);
+  const normalized = normalizeProviderId(id);
+  const found = PROVIDERS.find((item) => item.id === normalized);
   if (found) return found;
   const fallback = PROVIDERS[0];
   if (!fallback) {
     throw new Error('缺少服务商预设');
   }
   return fallback;
+}
+
+export function getProviderSeedSettings(id: string): ProviderSeedSettings {
+  const preset = getProvider(id);
+  return {
+    providerId: preset.id,
+    baseUrl: preset.baseUrl,
+    model: preset.model,
+    transcribeModel: preset.supportsTranscribe ? preset.transcribeModel : '',
+  };
 }

@@ -3,10 +3,11 @@ import { getCompose } from '~/wa/dom';
 export function getComposeText(): string {
   const el = getCompose();
   if (!el) return '';
-  return (el.innerText || el.textContent || '').replace(/\u00a0/g, ' ').replace(/\n+$/, '');
+  return (el.innerText || el.textContent || '').replace(/\u00a0/g, ' ').replace(/\n+$/, '').trim();
 }
 
 function selectAll(el: HTMLElement): void {
+  el.focus();
   const range = document.createRange();
   range.selectNodeContents(el);
   const selection = window.getSelection();
@@ -19,11 +20,11 @@ export type InsertResult = 'ok' | 'clipboard' | 'fail';
 export async function setComposeText(text: string): Promise<InsertResult> {
   const el = getCompose();
   if (!el) return 'fail';
+
   el.focus();
   selectAll(el);
 
-  const inserted = document.execCommand('insertText', false, text);
-  if (inserted && composeLooksLike(text)) return 'ok';
+  if (tryInsertText(el, text) && composeLooksLike(text)) return 'ok';
 
   try {
     const data = new DataTransfer();
@@ -35,7 +36,7 @@ export async function setComposeText(text: string): Promise<InsertResult> {
         cancelable: true,
       }),
     );
-    await sleep(40);
+    await sleep(60);
     if (composeLooksLike(text)) return 'ok';
   } catch {
     // WhatsApp may ignore synthetic paste
@@ -49,8 +50,41 @@ export async function setComposeText(text: string): Promise<InsertResult> {
   }
 }
 
+function tryInsertText(el: HTMLElement, text: string): boolean {
+  try {
+    el.dispatchEvent(
+      new InputEvent('beforeinput', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertText',
+        data: text,
+      }),
+    );
+  } catch {
+    // older browsers
+  }
+
+  const inserted = document.execCommand('insertText', false, text);
+  if (inserted) return true;
+
+  try {
+    el.dispatchEvent(
+      new InputEvent('input', {
+        bubbles: true,
+        cancelable: false,
+        inputType: 'insertText',
+        data: text,
+      }),
+    );
+  } catch {
+    // ignore
+  }
+
+  return composeLooksLike(text);
+}
+
 export async function insertComposeText(text: string): Promise<InsertResult> {
-  const current = getComposeText().trim();
+  const current = getComposeText();
   const next = current ? `${current}\n${text}` : text;
   return setComposeText(next);
 }

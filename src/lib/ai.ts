@@ -7,7 +7,11 @@ function joinUrl(base: string, path: string): string {
 }
 
 function requireSettings(settings: AiSettings): void {
-  if (!settings.apiKey.trim()) {
+  if (settings.authMode === 'projectKey') {
+    if (!settings.projectKey.trim()) {
+      throw new Error('请先在选项页填写 Project Key');
+    }
+  } else if (!settings.apiKey.trim()) {
     throw new Error('请先在选项页填写 API Key');
   }
   if (!settings.baseUrl.trim()) {
@@ -16,6 +20,26 @@ function requireSettings(settings: AiSettings): void {
   if (!settings.model.trim()) {
     throw new Error('请填写文本模型名');
   }
+}
+
+function buildAuthHeaders(settings: AiSettings, forForm = false): HeadersInit {
+  const headers: Record<string, string> = {};
+  if (!forForm) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (settings.authMode === 'projectKey') {
+    const token = settings.projectKey.trim();
+    const headerName = (settings.projectKeyHeader || 'Authorization').trim();
+    const value =
+      settings.projectKeyScheme === 'raw' ? token : `Bearer ${token}`;
+
+    headers[headerName] = value;
+  } else {
+    headers.Authorization = `Bearer ${settings.apiKey.trim()}`;
+  }
+
+  return headers;
 }
 
 async function readError(res: Response): Promise<string> {
@@ -33,10 +57,7 @@ export async function translateText(
   const target = langLabel(targetLang);
   const res = await fetch(joinUrl(settings.baseUrl, 'chat/completions'), {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${settings.apiKey.trim()}`,
-      'Content-Type': 'application/json',
-    },
+    headers: buildAuthHeaders(settings),
     body: JSON.stringify({
       model: settings.model.trim(),
       temperature: 0.1,
@@ -47,7 +68,8 @@ export async function translateText(
             `You are a translator. Translate the user's message into ${target}. ` +
             'Return only the translation, with no quotes, labels, or explanation. ' +
             'If the text is already in the target language, return it unchanged. ' +
-            'Preserve names, numbers, emojis, and line breaks.',
+            'Preserve names, numbers, emojis, and line breaks. ' +
+            'Use natural conversational phrasing for chat context (including negotiation tone) while preserving the original meaning and intent.',
         },
         { role: 'user', content: text },
       ],
@@ -77,7 +99,7 @@ export async function transcribeAudio(
     throw new Error(
       provider.supportsTranscribe
         ? '请填写语音转写模型名'
-        : `${provider.name} 仅支持文本翻译，请改用 OpenAI、Groq 或硅基流动做语音转写`,
+        : `${provider.name} 仅支持文本翻译，请改用 OpenAI 或硅基流动做语音转写`,
     );
   }
 
@@ -103,9 +125,7 @@ export async function transcribeAudio(
 
   const res = await fetch(joinUrl(settings.baseUrl, 'audio/transcriptions'), {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${settings.apiKey.trim()}`,
-    },
+    headers: buildAuthHeaders(settings, true),
     body: form,
   });
   if (!res.ok) {

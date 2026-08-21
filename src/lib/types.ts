@@ -1,6 +1,10 @@
 export interface AiSettings {
   providerId: string;
+  authMode: 'apiKey' | 'projectKey';
   apiKey: string;
+  projectKey: string;
+  projectKeyHeader: string;
+  projectKeyScheme: 'bearer' | 'raw';
   baseUrl: string;
   model: string;
   transcribeModel: string;
@@ -27,6 +31,7 @@ export interface ChatMeta {
   tagIds: string[];
   outgoingLang?: string;
   autoTranslate?: boolean;
+  manualPhone?: string;
 }
 
 export interface AppState {
@@ -34,18 +39,24 @@ export interface AppState {
   templates: QuickReply[];
   tagPalette: TagDef[];
   chats: Record<string, ChatMeta>;
+  translationHistory: Record<string, { text: string; timestamp: number }>;
 }
 
 export interface PublicState {
-  settings: Omit<AiSettings, 'apiKey'> & { hasKey: boolean };
+  settings: Omit<AiSettings, 'apiKey' | 'projectKey'> & { hasKey: boolean };
   templates: QuickReply[];
   tagPalette: TagDef[];
   chats: Record<string, ChatMeta>;
+  translationHistory: Record<string, { text: string; timestamp: number }>;
 }
 
 export const DEFAULT_SETTINGS: AiSettings = {
   providerId: 'deepseek',
+  authMode: 'apiKey',
   apiKey: '',
+  projectKey: '',
+  projectKeyHeader: 'Authorization',
+  projectKeyScheme: 'bearer',
   baseUrl: 'https://api.deepseek.com/v1',
   model: 'deepseek-chat',
   transcribeModel: '',
@@ -62,6 +73,13 @@ export const DEFAULT_TAGS: TagDef[] = [
 ];
 
 export const DEFAULT_TEMPLATES: QuickReply[] = [
+  { id: 'wait', title: 'One moment', body: 'One moment, let me check.' },
+  { id: 'thanks', title: 'Got it', body: 'Got it, thank you.' },
+  { id: 'hello', title: 'Hello', body: 'Hello! How can I help you today?' },
+];
+
+/** Legacy Chinese defaults — migrate once to English. */
+export const LEGACY_ZH_TEMPLATES: QuickReply[] = [
   { id: 'wait', title: '稍等', body: '稍等，我看一下。' },
   { id: 'thanks', title: '收到', body: '收到，谢谢。' },
 ];
@@ -71,6 +89,7 @@ export const DEFAULT_STATE: AppState = {
   templates: DEFAULT_TEMPLATES,
   tagPalette: DEFAULT_TAGS,
   chats: {},
+  translationHistory: {},
 };
 
 export function emptyChatMeta(): ChatMeta {

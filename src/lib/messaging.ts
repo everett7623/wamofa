@@ -1,10 +1,12 @@
-import type { AppState, ChatMeta, PublicState } from '~/lib/types';
+import type { AppState, ChatMeta, PublicState, QuickReply } from '~/lib/types';
 
 export type ExtensionRequest =
   | { type: 'WAMOFA_GET_STATE' }
   | { type: 'WAMOFA_GET_PRIVATE' }
   | { type: 'WAMOFA_SAVE_PRIVATE'; state: AppState }
   | { type: 'WAMOFA_UPSERT_CHAT'; chatId: string; patch: Partial<ChatMeta> }
+  | { type: 'WAMOFA_SAVE_TEMPLATES'; templates: QuickReply[] }
+  | { type: 'WAMOFA_OPEN_OPTIONS' }
   | { type: 'WAMOFA_TRANSLATE'; text: string; targetLang: string }
   | { type: 'WAMOFA_TRANSCRIBE'; mime: string; dataBase64: string; fileName?: string }
   | { type: 'WAMOFA_TEST' };

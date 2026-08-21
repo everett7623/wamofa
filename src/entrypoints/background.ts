@@ -1,6 +1,12 @@
 import { testConnection, transcribeAudio, translateText } from '~/lib/ai';
 import type { ExtensionRequest, ExtensionResponse } from '~/lib/messaging';
-import { getState, setState, toPublicState, upsertChat } from '~/lib/storage';
+import {
+  getState,
+  saveTemplates,
+  setState,
+  toPublicState,
+  upsertChat,
+} from '~/lib/storage';
 
 export default defineBackground(() => {
   browser.runtime.onMessage.addListener(
@@ -39,13 +45,13 @@ async function handle(
       if (!isExtensionPage(sender)) {
         return { ok: false, error: '无权写入完整配置' };
       }
-      const current = await getState();
       const incoming = message.state;
       const next = {
         ...incoming,
         settings: {
           ...incoming.settings,
-          apiKey: incoming.settings.apiKey.trim() || current.settings.apiKey,
+          apiKey: incoming.settings.apiKey.trim(),
+          projectKey: incoming.settings.projectKey.trim(),
         },
       };
       return { ok: true, privateState: await setState(next) };
@@ -55,6 +61,20 @@ async function handle(
         ok: true,
         state: toPublicState(await upsertChat(message.chatId, message.patch)),
       };
+    case 'WAMOFA_SAVE_TEMPLATES':
+      return {
+        ok: true,
+        state: toPublicState(await saveTemplates(message.templates)),
+      };
+    case 'WAMOFA_OPEN_OPTIONS': {
+      try {
+        await browser.runtime.openOptionsPage();
+      } catch {
+        const url = browser.runtime.getURL('/options.html');
+        await browser.tabs.create({ url });
+      }
+      return { ok: true, text: 'opened' };
+    }
     case 'WAMOFA_TRANSLATE': {
       const { settings } = await getState();
       const text = await translateText(settings, message.text, message.targetLang);

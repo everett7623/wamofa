@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { sendExtension } from '~/lib/messaging';
 import { normalizePhone, whatsappSendUrl } from '~/lib/phone';
+import { getProvider } from '~/lib/providers';
 import type { PublicState } from '~/lib/types';
 
 export default function App() {
@@ -22,77 +23,88 @@ export default function App() {
       return;
     }
     const url = whatsappSendUrl(normalized);
-    const tabs = await browser.tabs.query({ url: '*://web.whatsapp.com/*' });
-    if (tabs[0]?.id) {
-      await browser.tabs.update(tabs[0].id, { url, active: true });
-      if (tabs[0].windowId != null) {
-        try {
-          await browser.windows.update(tabs[0].windowId, { focused: true });
-        } catch {
-          // some browsers restrict window focus
+    try {
+      const tabs = await browser.tabs.query({ url: '*://web.whatsapp.com/*' });
+      if (tabs[0]?.id) {
+        await browser.tabs.update(tabs[0].id, { url, active: true });
+        if (tabs[0].windowId != null) {
+          try {
+            await browser.windows.update(tabs[0].windowId, { focused: true });
+          } catch {
+            // Some browsers restrict window focus after an extension action.
+          }
         }
+      } else {
+        await browser.tabs.create({ url });
       }
-    } else {
-      await browser.tabs.create({ url });
+      setHint(`正在打开 +${normalized}`);
+    } catch {
+      setHint('无法打开 WhatsApp Web，请稍后重试');
     }
-    setHint(`正在打开 ${normalized}`);
   }
 
   return (
-    <div className="p-4">
-      <div className="flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-sm font-semibold text-white">
-          W
+    <div className="popup-shell">
+      <header className="popup-header">
+        <div className="popup-brand-mark">W</div>
+        <div className="popup-brand-copy">
+          <strong>WAMofa</strong>
+          <span>WhatsApp 工作台</span>
         </div>
+        <span className={`popup-status-dot ${state?.settings.hasKey ? 'is-ready' : ''}`} title={state?.settings.hasKey ? 'AI 已配置' : 'AI 未配置'} />
+      </header>
+
+      <section className={`connection-card ${state?.settings.hasKey ? 'is-ready' : ''}`}>
+        <span className="connection-icon">AI</span>
         <div>
-          <div className="text-sm font-semibold">WAMofa</div>
-          <div className="text-xs text-muted">WhatsApp Web 安全辅助</div>
+          <small>智能服务</small>
+          <strong>
+            {!state ? '正在读取配置…' : state.settings.hasKey ? `${getProvider(state.settings.providerId).name} 已就绪` : '等待配置 API Key'}
+          </strong>
         </div>
-      </div>
-
-      <p className="mt-3 text-xs leading-5 text-muted">
-        {state?.settings.hasKey
-          ? `已配置 ${state.settings.providerId}，翻译会走你自己的 Key。`
-          : '还没填 API Key。先打开选项页。'}
-      </p>
-
-      <label className="mt-4 block text-xs font-medium text-ink">
-        不保存号码，直接开聊
-        <input
-          className="mt-1 w-full rounded-md border border-line px-3 py-2 text-sm outline-none focus:border-brand"
-          placeholder="+86 138 0000 0000"
-          value={phone}
-          onChange={(event) => setPhone(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') void openChat();
-          }}
-        />
-      </label>
-      <button
-        type="button"
-        className="mt-2 w-full rounded-md bg-brand px-3 py-2 text-sm font-medium text-white hover:bg-brand-dark"
-        onClick={() => void openChat()}
-      >
-        打开聊天
-      </button>
-      {hint ? <p className="mt-2 text-xs text-brand">{hint}</p> : null}
-
-      <div className="mt-4 flex gap-2">
-        <button
-          type="button"
-          className="flex-1 rounded-md border border-line px-3 py-2 text-xs"
-          onClick={() => browser.runtime.openOptionsPage()}
-        >
-          选项
+        <button type="button" onClick={() => browser.runtime.openOptionsPage()}>
+          {state?.settings.hasKey ? '管理' : '配置'}
         </button>
-        <button
-          type="button"
-          className="flex-1 rounded-md border border-line px-3 py-2 text-xs"
-          onClick={() => browser.tabs.create({ url: 'https://web.whatsapp.com/' })}
-        >
+      </section>
+
+      <section className="quick-chat-card">
+        <div className="popup-section-title">
+          <div><span>Quick chat</span><strong>不存号码，直接开聊</strong></div>
+          <i aria-hidden="true">↗</i>
+        </div>
+        <label className="phone-field">
+          <span aria-hidden="true">+</span>
+          <input
+            inputMode="tel"
+            autoComplete="tel"
+            aria-label="电话号码"
+            aria-invalid={hint === '请输入有效号码'}
+            placeholder="86 138 0000 0000"
+            value={phone}
+            onChange={(event) => {
+              setPhone(event.target.value);
+              if (hint) setHint('');
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') void openChat();
+            }}
+          />
+        </label>
+        <button type="button" className="open-chat-btn" onClick={() => void openChat()}>
+          打开对话 <span aria-hidden="true">→</span>
+        </button>
+        {hint ? <p className="popup-hint" role="status">{hint}</p> : null}
+      </section>
+
+      <footer className="popup-footer">
+        <button type="button" onClick={() => browser.runtime.openOptionsPage()}>
+          工作台设置
+        </button>
+        <span />
+        <button type="button" onClick={() => browser.tabs.create({ url: 'https://web.whatsapp.com/' })}>
           打开 WhatsApp Web
         </button>
-      </div>
+      </footer>
     </div>
   );
 }
