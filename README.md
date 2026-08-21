@@ -28,7 +28,7 @@ WAMofa 是独立项目，与 WhatsApp 官方无关联。
 - **标签系统**: 自定义颜色标签分类客户
 
 ### 🎙️ 语音转写
-- 点击语音消息自动转写（支持 OpenAI Whisper、硅基流动 SenseVoice）
+- 点击语音消息自动转写（支持 OpenAI Whisper）
 - 转写后可再次翻译
 
 ### ⌨️ 全局快捷键
@@ -117,24 +117,11 @@ WAMofa 支持多种 AI 服务商：
 
 | 服务商 | 文本翻译 | 语音转写 | 默认模型 |
 |--------|----------|----------|----------|
-| **OpenAI** | ✅ | ✅ Whisper | gpt-4o-mini |
+| **OpenAI** | ✅ | ✅ Whisper | gpt-4o |
+| **Claude** | ✅ | ❌ | claude-3-5-sonnet-20241022 |
 | **DeepSeek** | ✅ | ❌ | deepseek-chat |
 | **Gemini** | ✅ | ❌ | gemini-2.0-flash-exp |
-| **Grok** | ✅ | ❌ | grok-2-latest |
-| **硅基流动** | ✅ | ✅ SenseVoice | Qwen/Qwen2.5-7B-Instruct |
-
-#### 中转服务（Sub2API / NewAPI）
-
-如果你使用 Sub2API 或 NewAPI 等中转服务：
-
-1. 选择 **"Sub2API"** 或 **"NewAPI"**
-2. **鉴权方式** 选择 **"Project Key"**
-3. 填写：
-   - **Base URL**: 你的中转服务域名（如 `https://api.your-domain.com/v1`）
-   - **Project Key**: 中转服务提供的密钥
-   - **Header**: 通常是 `Authorization`
-   - **格式**: 通常是 `Bearer <ProjectKey>`
-4. **文本模型**: 根据中转服务支持的模型填写（如 `gpt-4o-mini`）
+| **Grok** | ✅ | ❌ | grok-beta |
 
 #### 自定义接口
 
