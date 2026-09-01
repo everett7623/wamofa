@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { resolveChatLookup } from '~/lib/chat-keys';
 import { LANGUAGES } from '~/lib/langs';
 import { sendExtension } from '~/lib/messaging';
 import type { PublicState } from '~/lib/types';
@@ -6,16 +7,25 @@ import { getComposeText, setComposeText } from '~/wa/compose';
 
 interface Props {
   chatId: string;
+  title: string;
+  headerPhone: string | null;
   state: PublicState;
   onToast: (text: string) => void;
 }
 
-export function ComposeBar({ chatId, state, onToast }: Props) {
+export function ComposeBar({ chatId, title, headerPhone, state, onToast }: Props) {
   const [source, setSource] = useState(() => getComposeText());
   const [preview, setPreview] = useState('');
   const [busy, setBusy] = useState(false);
-  const outgoingLang =
-    state.chats[chatId]?.outgoingLang ?? state.settings.outgoingLang;
+  const [inserting, setInserting] = useState(false);
+  const insertLock = useRef(false);
+  // 与 HeaderBar 用同一套解析：会话设置可能挂在 phone: 或 title: 键上，
+  // 直接用 chatId 索引会在两者迁移完成前读空。
+  const meta = useMemo(
+    () => resolveChatLookup(state.chats, { chatId, title, phone: headerPhone }).meta,
+    [state.chats, chatId, title, headerPhone],
+  );
+  const outgoingLang = meta.outgoingLang ?? state.settings.outgoingLang;
   const language = LANGUAGES.find((item) => item.id === outgoingLang)?.label ?? outgoingLang;
 
   function readCompose() {
@@ -56,15 +66,22 @@ export function ComposeBar({ chatId, state, onToast }: Props) {
   }
 
   async function replaceInput() {
-    if (!preview.trim()) return;
-    const result = await setComposeText(preview.trim());
-    if (result === 'clipboard') {
-      onToast('已复制译文，请在输入框粘贴');
-    } else if (result === 'fail') {
-      onToast('无法写入输入框');
-    } else {
-      onToast('已替换输入框，请确认后发送');
-      setPreview('');
+    if (insertLock.current || !preview.trim()) return;
+    insertLock.current = true;
+    setInserting(true);
+    try {
+      const result = await setComposeText(preview.trim());
+      if (result === 'clipboard') {
+        onToast('已复制译文，请在输入框粘贴');
+      } else if (result === 'fail') {
+        onToast('无法写入输入框');
+      } else {
+        onToast('已替换输入框，请确认后发送');
+        setPreview('');
+      }
+    } finally {
+      insertLock.current = false;
+      setInserting(false);
     }
   }
 
@@ -111,7 +128,14 @@ export function ComposeBar({ chatId, state, onToast }: Props) {
           />
           <div className="wm-result-actions">
             <button type="button" className="wm-btn ghost" onClick={() => setPreview('')}>清除</button>
-            <button type="button" className="wm-btn" onClick={() => void replaceInput()}>替换 WhatsApp 输入框</button>
+            <button
+              type="button"
+              className="wm-btn"
+              disabled={inserting}
+              onClick={() => void replaceInput()}
+            >
+              {inserting ? '正在替换…' : '替换 WhatsApp 输入框'}
+            </button>
           </div>
         </div>
       ) : (

@@ -16,7 +16,7 @@ export default defineContentScript({
   cssInjectionMode: 'ui',
   async main(ctx) {
     await waitForApp(() => ctx.isInvalid);
-    injectPageStyles();
+    injectPageStyles(ctx);
 
     let state: PublicState | null = null;
     let lastChatId: string | null = null;

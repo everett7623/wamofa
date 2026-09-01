@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LANGUAGES } from '~/lib/langs';
 import { sendExtension } from '~/lib/messaging';
-import { downloadAsFile, exportData, importData } from '~/lib/import-export';
 import {
   getProvider,
   getProviderSeedSettings,
@@ -16,16 +15,38 @@ export default function App() {
   const [loaded, setLoaded] = useState(false);
   const [status, setStatus] = useState('');
   const [testing, setTesting] = useState(false);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [remoteModels, setRemoteModels] = useState<string[]>([]);
+  const [manualModel, setManualModel] = useState(false);
+  const [manualTranscribeModel, setManualTranscribeModel] = useState(false);
   const [revealSecret, setRevealSecret] = useState(false);
 
   const provider = useMemo(
     () => getProvider(state.settings.providerId),
     [state.settings.providerId],
   );
+  const usesProjectKey =
+    provider.preferredAuthMode === 'projectKey' ||
+    (provider.configurableAuth && state.settings.authMode === 'projectKey');
   const credentialConfigured =
-    state.settings.authMode === 'projectKey'
+    usesProjectKey
       ? Boolean(state.settings.projectKey.trim())
       : Boolean(state.settings.apiKey.trim());
+  const availableModels = useMemo(
+    () => remoteModels.length ? remoteModels : provider.modelOptions ?? [],
+    [provider.modelOptions, remoteModels],
+  );
+  const modelIsListed = availableModels.includes(state.settings.model);
+  const showManualModel =
+    manualModel || !availableModels.length || !modelIsListed;
+  const availableTranscribeModels = provider.transcribeModelOptions ?? [];
+  const transcribeModelIsListed = availableTranscribeModels.includes(
+    state.settings.transcribeModel,
+  );
+  const showManualTranscribeModel =
+    manualTranscribeModel ||
+    !availableTranscribeModels.length ||
+    !transcribeModelIsListed;
 
   useEffect(() => {
     void sendExtension({ type: 'WAMOFA_GET_PRIVATE' })
@@ -72,8 +93,22 @@ export default function App() {
     }
   }
 
+  /**
+   * 从最新 state 保存。onBlur 与 onChange 可能落在同一批次里，
+   * 直接 save(state) 会拿到本次渲染闭包中的旧值，把刚输入的内容写丢。
+   */
+  function saveLatest(message?: string) {
+    setState((prev) => {
+      Promise.resolve().then(() => void save(prev, message));
+      return prev;
+    });
+  }
+
   function applyProvider(id: string) {
     const defaults = getProviderSeedSettings(id);
+    setRemoteModels([]);
+    setManualModel(false);
+    setManualTranscribeModel(false);
     void save({
       ...state,
       settings: {
@@ -81,6 +116,29 @@ export default function App() {
         ...defaults,
       },
     });
+  }
+
+  async function loadModelList() {
+    setLoadingModels(true);
+    try {
+      const persist = await sendExtension({ type: 'WAMOFA_SAVE_PRIVATE', state });
+      if (!persist.ok) {
+        setStatus(persist.error);
+        return;
+      }
+      const res = await sendExtension({ type: 'WAMOFA_LIST_MODELS' });
+      if (res.ok && 'models' in res) {
+        setRemoteModels(res.models);
+        setManualModel(!res.models.includes(state.settings.model));
+        setStatus(`已读取 ${res.models.length} 个模型，可在下拉菜单中切换`);
+      } else if (!res.ok) {
+        setStatus(res.error);
+      }
+    } catch {
+      setStatus('读取模型列表失败，请检查 Base URL、Key 和网关分组');
+    } finally {
+      setLoadingModels(false);
+    }
   }
 
   async function test() {
@@ -98,42 +156,6 @@ export default function App() {
     } finally {
       setTesting(false);
     }
-  }
-
-  async function handleExport() {
-    try {
-      const json = await exportData();
-      const timestamp = new Date().toISOString().slice(0, 10);
-      downloadAsFile(json, `wamofa-backup-${timestamp}.json`);
-      setStatus('数据已导出');
-    } catch {
-      setStatus('导出失败');
-    }
-  }
-
-  async function handleImport() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/json';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      try {
-        const text = await file.text();
-        const result = await importData(text);
-        setStatus(result.message);
-        if (result.success) {
-          // 刷新状态
-          const res = await sendExtension({ type: 'WAMOFA_GET_PRIVATE' });
-          if (res.ok && 'privateState' in res) {
-            setState(res.privateState);
-          }
-        }
-      } catch {
-        setStatus('读取文件失败');
-      }
-    };
-    input.click();
   }
 
   if (!loaded) {
@@ -161,11 +183,10 @@ export default function App() {
           <a href="#language"><span>02</span>语言与习惯</a>
           <a href="#replies"><span>03</span>快捷回复</a>
           <a href="#tags"><span>04</span>客户标签</a>
-          <a href="#data"><span>05</span>数据管理</a>
         </nav>
         <div className="settings-local-note">
           <i aria-hidden="true" />
-          <div><strong>本机私密存储</strong><small>Key 与客户资料不会经过 WAMofa 服务器</small></div>
+          <div><strong>本机私密存储</strong><small>备注、标签、话术与 Key 均只存在当前浏览器，不上传云端</small></div>
         </div>
       </aside>
 
@@ -216,31 +237,43 @@ export default function App() {
           </select>
         </label>
         <p className="text-xs text-muted">{provider.hint}</p>
-        {!provider.supportsTranscribe ? (
-          <p className="text-xs text-amber-700">该厂商仅文本翻译，语音转写请改用 OpenAI（或自定义 Whisper API）。</p>
+        {provider.id === 'dots' ? (
+          <p className="text-xs text-muted">
+            Dots 认证头固定为 <code>api-key</code>，扩展会自动请求 <code>/v1/chat/completions</code>。
+          </p>
         ) : null}
-        <label className="grid gap-1 text-sm">
-          鉴权方式
-          <select
-            className="field"
-            value={state.settings.authMode}
-            onChange={(event) =>
-              void save({
-                ...state,
-                settings: {
-                  ...state.settings,
-                  authMode: event.target.value as 'apiKey' | 'projectKey',
-                },
-              })
-            }
-          >
-            <option value="apiKey">API Key</option>
-            <option value="projectKey">Project Key（中转服务）</option>
-          </select>
-        </label>
-        {state.settings.authMode === 'projectKey' ? (
+        {provider.id === 'sub2api' ? (
+          <p className="text-xs text-muted">
+            Base URL 可填网关根地址或以 <code>/v1</code> 结尾的地址；默认使用 <code>Authorization: Bearer</code>，并可从 <code>/v1/models</code> 读取该分组可用模型。
+          </p>
+        ) : null}
+        {!provider.supportsTranscribe ? (
+          <p className="text-xs text-amber-700">该厂商预设仅支持文本翻译；语音转写可改用 OpenAI、Grok 或兼容的自定义接口。</p>
+        ) : null}
+        {provider.configurableAuth ? (
+          <label className="grid gap-1 text-sm">
+            鉴权方式
+            <select
+              className="field"
+              value={state.settings.authMode}
+              onChange={(event) =>
+                void save({
+                  ...state,
+                  settings: {
+                    ...state.settings,
+                    authMode: event.target.value as 'apiKey' | 'projectKey',
+                  },
+                })
+              }
+            >
+              <option value="apiKey">标准 API Key（使用预设请求头）</option>
+              <option value="projectKey">自定义请求头 / Project Key</option>
+            </select>
+          </label>
+        ) : null}
+        {provider.configurableAuth && usesProjectKey ? (
           <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded text-xs">
-            <strong className="block mb-1">🔑 Project Key 模式</strong>
+            <strong className="block mb-1">🔑 网关 / Project Key 模式</strong>
             <p className="text-muted mb-2">
               适用于 API 中转服务。通常配置：
             </p>
@@ -251,7 +284,7 @@ export default function App() {
             </ul>
           </div>
         ) : null}
-        {state.settings.authMode === 'projectKey' ? (
+        {provider.configurableAuth && usesProjectKey ? (
           <>
             <label className="grid gap-1 text-sm">
               Header 名称
@@ -264,7 +297,7 @@ export default function App() {
                     settings: { ...state.settings, projectKeyHeader: event.target.value },
                   })
                 }
-                onBlur={() => void save(state)}
+                onBlur={() => saveLatest()}
               />
             </label>
             <label className="grid gap-1 text-sm">
@@ -281,7 +314,7 @@ export default function App() {
                     },
                   })
                 }
-                onBlur={() => void save(state)}
+                onBlur={() => saveLatest()}
               >
                 <option value="bearer">Bearer &lt;ProjectKey&gt;</option>
                 <option value="raw">直接传入（原始值）</option>
@@ -290,14 +323,18 @@ export default function App() {
           </>
         ) : null}
         <label className="grid gap-1 text-sm">
-          {state.settings.authMode === 'projectKey' ? 'Project Key' : 'API Key'}
+          {usesProjectKey
+            ? '网关 / Project Key'
+            : provider.id === 'sub2api'
+              ? 'Sub2API API Key'
+              : `${provider.name} API Key`}
           <span className="secret-field">
             <input
               className="field"
               type={revealSecret ? 'text' : 'password'}
               autoComplete="off"
               value={
-                state.settings.authMode === 'projectKey'
+                usesProjectKey
                   ? state.settings.projectKey
                   : state.settings.apiKey
               }
@@ -305,73 +342,179 @@ export default function App() {
                 setState({
                   ...state,
                   settings:
-                    state.settings.authMode === 'projectKey'
+                    usesProjectKey
                       ? { ...state.settings, projectKey: event.target.value }
                       : { ...state.settings, apiKey: event.target.value },
                 })
               }
-              onBlur={() => void save(state)}
+              onBlur={() => saveLatest()}
             />
             <button type="button" onClick={() => setRevealSecret((value) => !value)}>
               {revealSecret ? '隐藏' : '显示'}
             </button>
           </span>
         </label>
-        {state.settings.authMode === 'projectKey' ? (
+        {provider.id === 'sub2api' && !usesProjectKey ? (
           <p className="text-xs text-muted">
-            Sub2API/NewAPI 常见配置：Header 用 <code>Authorization</code>，格式默认 <code>Bearer &lt;ProjectKey&gt;</code>。
+            标准方式使用 <code>Authorization: Bearer &lt;API Key&gt;</code>；也可在上方切换为自定义请求头方式。
           </p>
         ) : null}
-        <label className="grid gap-1 text-sm">
-          Base URL
-          <input
-            className="field"
-            value={state.settings.baseUrl}
-            onChange={(event) =>
-              setState({
-                ...state,
-                settings: { ...state.settings, baseUrl: event.target.value },
-              })
-            }
-            onBlur={() => void save(state)}
-          />
-        </label>
+        {provider.configurableBaseUrl ? (
+          <label className="grid gap-1 text-sm">
+            Base URL
+            <input
+              className="field"
+              value={state.settings.baseUrl}
+              onChange={(event) =>
+                setState({
+                  ...state,
+                  settings: { ...state.settings, baseUrl: event.target.value },
+                })
+              }
+              onBlur={() => saveLatest()}
+            />
+          </label>
+        ) : (
+          <p className="text-xs text-muted">
+            官方 API 地址与鉴权方式已内置，只需填写 API Key 并选择模型。
+          </p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="grid gap-1 text-sm">
-            文本模型
-            <input
-              className="field"
-              value={state.settings.model}
-              onChange={(event) =>
-                setState({
-                  ...state,
-                  settings: { ...state.settings, model: event.target.value },
-                })
-              }
-              onBlur={() => void save(state)}
-            />
-          </label>
-          <label className="grid gap-1 text-sm">
-            转写模型
-            <input
-              className="field"
-              value={state.settings.transcribeModel}
-              placeholder={provider.supportsTranscribe ? 'whisper / sensevoice' : '不支持'}
-              onChange={(event) =>
-                setState({
-                  ...state,
-                  settings: { ...state.settings, transcribeModel: event.target.value },
-                })
-              }
-              onBlur={() => void save(state)}
-            />
-          </label>
+          <div className="grid gap-1 text-sm">
+            <label className="grid gap-1">
+              文本模型
+              {availableModels.length ? (
+                <select
+                  className="field"
+                  value={modelIsListed ? state.settings.model : ''}
+                  onChange={(event) => {
+                    setManualModel(false);
+                    void save({
+                      ...state,
+                      settings: { ...state.settings, model: event.target.value },
+                    }, '模型已切换');
+                  }}
+                >
+                  {!modelIsListed ? (
+                    <option value="" disabled>
+                      {state.settings.model.trim() ? '当前使用手动模型' : '请选择模型'}
+                    </option>
+                  ) : null}
+                  {availableModels.map((model) => (
+                    <option key={model} value={model}>{model}</option>
+                  ))}
+                </select>
+              ) : null}
+              {showManualModel || !availableModels.length ? (
+                <input
+                  className="field"
+                  value={state.settings.model}
+                  placeholder={provider.id === 'sub2api' ? '填写分组模型 ID' : '模型 ID'}
+                  onChange={(event) =>
+                    setState({
+                      ...state,
+                      settings: { ...state.settings, model: event.target.value },
+                    })
+                  }
+                  onBlur={() => saveLatest()}
+                />
+              ) : null}
+            </label>
+            {availableModels.length && modelIsListed ? (
+              <button
+                type="button"
+                className="btn-ghost justify-self-start"
+                onClick={() => setManualModel((value) => !value)}
+              >
+                {manualModel ? '收起手动输入' : '手动填写其他模型'}
+              </button>
+            ) : null}
+            {provider.modelsPath ? (
+              <button
+                type="button"
+                className="btn-ghost justify-self-start"
+                disabled={loadingModels}
+                onClick={() => void loadModelList()}
+              >
+                {loadingModels ? '读取中…' : '读取接口模型'}
+              </button>
+            ) : null}
+          </div>
+          <div className="grid gap-1 text-sm">
+            <span>转写模型</span>
+            {provider.supportsTranscribe &&
+            provider.transcribeModelRequired !== false &&
+            availableTranscribeModels.length ? (
+              <select
+                className="field"
+                aria-label="转写模型"
+                value={transcribeModelIsListed ? state.settings.transcribeModel : ''}
+                onChange={(event) => {
+                  setManualTranscribeModel(false);
+                  void save({
+                    ...state,
+                    settings: {
+                      ...state.settings,
+                      transcribeModel: event.target.value,
+                    },
+                  }, '转写模型已切换');
+                }}
+              >
+                {!transcribeModelIsListed ? (
+                  <option value="" disabled>
+                    {state.settings.transcribeModel.trim()
+                      ? '当前使用手动模型'
+                      : '请选择模型'}
+                  </option>
+                ) : null}
+                {availableTranscribeModels.map((model) => (
+                  <option key={model} value={model}>{model}</option>
+                ))}
+              </select>
+            ) : null}
+            {!provider.supportsTranscribe ||
+            provider.transcribeModelRequired === false ||
+            showManualTranscribeModel ? (
+              <input
+                className="field"
+                aria-label="转写模型"
+                value={state.settings.transcribeModel}
+                disabled={!provider.supportsTranscribe || provider.transcribeModelRequired === false}
+                placeholder={
+                  !provider.supportsTranscribe
+                    ? '不支持'
+                    : provider.transcribeModelRequired === false
+                      ? '固定 STT 接口，无需模型名'
+                      : '转写模型 ID'
+                }
+                onChange={(event) =>
+                  setState({
+                    ...state,
+                    settings: { ...state.settings, transcribeModel: event.target.value },
+                  })
+                }
+                onBlur={() => saveLatest()}
+              />
+            ) : null}
+            {provider.supportsTranscribe &&
+            provider.transcribeModelRequired !== false &&
+            availableTranscribeModels.length &&
+            transcribeModelIsListed ? (
+              <button
+                type="button"
+                className="btn-ghost justify-self-start"
+                onClick={() => setManualTranscribeModel((value) => !value)}
+              >
+                {manualTranscribeModel ? '收起手动输入' : '手动填写其他模型'}
+              </button>
+            ) : null}
+          </div>
         </div>
         <div className="flex gap-2">
           <button type="button" className="btn-primary" disabled={testing} onClick={() => void test()}>
             {testing ? '测试中…' : '测试翻译 hello'}
           </button>
-          <button type="button" className="btn-ghost" onClick={() => void save(state)}>
+          <button type="button" className="btn-ghost" onClick={() => saveLatest()}>
             保存
           </button>
         </div>
@@ -428,7 +571,7 @@ export default function App() {
                   settings: { ...state.settings, defaultCountryCode: event.target.value },
                 })
               }
-              onBlur={() => void save(state)}
+              onBlur={() => saveLatest()}
             />
           </label>
         </div>
@@ -454,16 +597,27 @@ export default function App() {
               key={item.id}
               item={item}
               onChange={(patch) => {
-                const templates = state.templates.map((row, i) =>
-                  i === index ? { ...row, ...patch } : row,
-                );
-                setState({ ...state, templates });
+                setState((prev) => {
+                  const templates = prev.templates.map((row, i) =>
+                    i === index ? { ...row, ...patch } : row,
+                  );
+                  return { ...prev, templates };
+                });
               }}
-              onSave={() => void save(state)}
+              onSave={() => {
+                setState((prev) => {
+                  Promise.resolve().then(() => void save(prev));
+                  return prev;
+                });
+              }}
               onRemove={() =>
-                void save({
-                  ...state,
-                  templates: state.templates.filter((row) => row.id !== item.id),
+                setState((prev) => {
+                  const next = {
+                    ...prev,
+                    templates: prev.templates.filter((row) => row.id !== item.id),
+                  };
+                  void save(next);
+                  return next;
                 })
               }
             />
@@ -473,12 +627,17 @@ export default function App() {
           type="button"
           className="btn-ghost"
           onClick={() =>
-            void save({
-              ...state,
-              templates: [
-                ...state.templates,
-                { id: crypto.randomUUID(), title: '新模板', body: '' },
-              ],
+            setState((prev) => {
+              const next = {
+                ...prev,
+                templates: [
+                  ...prev.templates,
+                  { id: crypto.randomUUID(), title: 'New template', body: 'Type your message…' },
+                ],
+              };
+              // 此前只更新了本地 state，没有落盘，刷新页面新模板就消失了。
+              Promise.resolve().then(() => void save(next, '已添加模板'));
+              return next;
             })
           }
         >
@@ -511,7 +670,7 @@ export default function App() {
                   );
                   setState({ ...state, tagPalette });
                 }}
-                onBlur={() => void save(state)}
+                onBlur={() => saveLatest()}
               />
               <button
                 type="button"
@@ -543,37 +702,6 @@ export default function App() {
         >
           添加标签
         </button>
-      </Section>
-
-      <Section id="data" kicker="Backup" title="数据管理" description="导出备份或导入客户资料、快捷回复等数据。">
-        <div className="grid gap-3">
-          <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg text-sm">
-            <strong className="block mb-1">💾 数据本地存储</strong>
-            <p className="text-muted">
-              所有客户备注、标签、快捷回复均存储在本机浏览器，不上传云端。
-              导出数据后可在其他设备导入，或作为备份使用。
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              className="btn"
-              onClick={() => void handleExport()}
-            >
-              📥 导出数据
-            </button>
-            <button
-              type="button"
-              className="btn ghost"
-              onClick={() => void handleImport()}
-            >
-              📤 导入数据
-            </button>
-          </div>
-          <p className="text-xs text-muted">
-            导出的 JSON 文件包含客户档案、快捷回复、标签配置，但不包含 API Key。
-          </p>
-        </div>
       </Section>
 
       {status ? <p className="settings-toast" role="status">{status}</p> : null}

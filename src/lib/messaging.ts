@@ -4,19 +4,26 @@ export type ExtensionRequest =
   | { type: 'WAMOFA_GET_STATE' }
   | { type: 'WAMOFA_GET_PRIVATE' }
   | { type: 'WAMOFA_SAVE_PRIVATE'; state: AppState }
-  | { type: 'WAMOFA_UPSERT_CHAT'; chatId: string; patch: Partial<ChatMeta> }
+  | {
+      type: 'WAMOFA_UPSERT_CHAT';
+      chatId: string;
+      patch: Partial<ChatMeta>;
+      aliasTitle?: string | null;
+    }
   | { type: 'WAMOFA_SAVE_TEMPLATES'; templates: QuickReply[] }
   | { type: 'WAMOFA_OPEN_OPTIONS' }
   | { type: 'WAMOFA_TRANSLATE'; text: string; targetLang: string }
   | { type: 'WAMOFA_TRANSCRIBE'; mime: string; dataBase64: string; fileName?: string }
+  | { type: 'WAMOFA_LIST_MODELS' }
   | { type: 'WAMOFA_TEST' };
 
 export type OkText = { ok: true; text: string };
 export type OkPublic = { ok: true; state: PublicState };
 export type OkPrivate = { ok: true; privateState: AppState };
+export type OkModels = { ok: true; models: string[] };
 export type Fail = { ok: false; error: string };
 
-export type ExtensionResponse = OkText | OkPublic | OkPrivate | Fail;
+export type ExtensionResponse = OkText | OkPublic | OkPrivate | OkModels | Fail;
 
 export function sendExtension<T extends ExtensionResponse>(
   message: ExtensionRequest,

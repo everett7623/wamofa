@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { sendExtension } from '~/lib/messaging';
-import { normalizePhone, whatsappSendUrl } from '~/lib/phone';
+import { buildOpenChatRequest } from '~/lib/phone';
 import { getProvider } from '~/lib/providers';
 import type { PublicState } from '~/lib/types';
 
@@ -16,17 +16,15 @@ export default function App() {
   }, []);
 
   async function openChat() {
-    const cc = state?.settings.defaultCountryCode ?? '86';
-    const normalized = normalizePhone(phone, cc);
-    if (!normalized) {
-      setHint('请输入有效号码');
+    const result = buildOpenChatRequest(phone, state?.settings.defaultCountryCode ?? '86');
+    if (!result.ok) {
+      setHint(result.error);
       return;
     }
-    const url = whatsappSendUrl(normalized);
     try {
       const tabs = await browser.tabs.query({ url: '*://web.whatsapp.com/*' });
       if (tabs[0]?.id) {
-        await browser.tabs.update(tabs[0].id, { url, active: true });
+        await browser.tabs.update(tabs[0].id, { url: result.url, active: true });
         if (tabs[0].windowId != null) {
           try {
             await browser.windows.update(tabs[0].windowId, { focused: true });
@@ -35,9 +33,9 @@ export default function App() {
           }
         }
       } else {
-        await browser.tabs.create({ url });
+        await browser.tabs.create({ url: result.url });
       }
-      setHint(`正在打开 +${normalized}`);
+      setHint(`正在打开 +${result.normalized}`);
     } catch {
       setHint('无法打开 WhatsApp Web，请稍后重试');
     }

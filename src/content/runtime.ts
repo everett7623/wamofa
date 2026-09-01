@@ -12,18 +12,10 @@ export function getRuntimeState(): PublicState | null {
 }
 
 export function setRuntimeChatId(id: string | null): void {
-  if (chatId !== id) {
-    chatId = id;
-  }
-  window.__WAMOFA_CHAT_ID__ = id ?? undefined;
+  chatId = id;
 }
 
 export function getRuntimeChatId(): string | null {
   return chatId;
 }
 
-declare global {
-  interface Window {
-    __WAMOFA_CHAT_ID__?: string;
-  }
-}

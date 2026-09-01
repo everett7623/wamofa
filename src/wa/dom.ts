@@ -36,6 +36,92 @@ export function getFooter(): HTMLElement | null {
   return first('#main footer');
 }
 
+/**
+ * WhatsApp renders image/document composition in a transient media editor.
+ * Its selectors have changed over time, so keep the check marker-based and
+ * require a visible send control before treating a media viewer as active.
+ */
+export function isMediaPreviewOpen(): boolean {
+  const sidebarWidth = 68;
+  const sendSelector = [
+    '[data-testid="compose-btn-send"]',
+    '[data-testid="send"]',
+    '[data-icon="send"]',
+    '[data-icon="send-light"]',
+    'button[aria-label*="Send"]',
+    'button[aria-label*="发送"]',
+    '[role="button"][aria-label*="Send"]',
+    '[role="button"][aria-label*="发送"]',
+  ].join(',');
+
+  const mediaMarkerSelector = [
+    '[data-testid="media-viewer"]',
+    '[data-testid="media-viewer-container"]',
+    '[data-testid="media-preview"]',
+    '[data-testid="media-editor"]',
+    '[data-testid="attachment-preview"]',
+    '[data-testid="document-preview"]',
+    '[data-testid="upload-preview"]',
+    '[data-testid*="media-viewer"]',
+    '[data-testid*="attachment-preview"]',
+    '[data-testid*="document-preview"]',
+  ].join(',');
+
+  const visibleSendControls = [...document.querySelectorAll<HTMLElement>(sendSelector)]
+    .filter(isVisible);
+
+  const markers = [...document.querySelectorAll<HTMLElement>(mediaMarkerSelector)]
+    .filter(isVisible);
+
+  // 优先相信带发送键的显式媒体标记。
+  if (markers.some((marker) => visibleSendControls.some((send) => marker.contains(send)))) {
+    return true;
+  }
+
+  // #main 已经让出了右侧栏的宽度，聊天界面内的控件不会越过这条边界；
+  // 越界的一定是脱离 #main 的全屏浮层（媒体 / 文件编辑器）。
+  // 这里不能再要求 markers 非空：新版 WhatsApp 移除了大部分 data-testid，
+  // markers 为空时发送键照样被压在右侧栏底下。
+  const coveredEdge = window.innerWidth - sidebarWidth;
+  if (visibleSendControls.some((send) => send.getBoundingClientRect().right > coveredEdge)) {
+    return true;
+  }
+
+  return railCoversNativeControl(sidebarWidth);
+}
+
+/**
+ * 兜底：直接探测右侧栏底部压住了什么。
+ * elementsFromPoint 返回该点上的所有层叠元素，跳过扩展自己的 shadow 宿主后，
+ * 若仍有原生可点击控件，说明我们正遮住它（发送键就是这种情况）。
+ * 不依赖任何 WhatsApp 类名或 data-testid，因此不会随对方改版失效。
+ */
+function railCoversNativeControl(sidebarWidth: number): boolean {
+  if (typeof document.elementsFromPoint !== 'function') return false;
+  const x = window.innerWidth - Math.round(sidebarWidth / 2);
+  const height = window.innerHeight;
+  for (const y of [height - 40, height - 70, height - 100]) {
+    if (y < 0) continue;
+    for (const element of document.elementsFromPoint(x, y)) {
+      // 扩展 UI 挂在 shadow 宿主上，命中的是宿主本身。
+      if (element.tagName.startsWith('WAMOFA')) continue;
+      if (element.closest('.wm-right-rail, .wm-side-panel')) continue;
+      if (element.closest('button, [role="button"]')) return true;
+    }
+  }
+  return false;
+}
+
+function isVisible(element: HTMLElement): boolean {
+  if (element.hidden || element.getAttribute('aria-hidden') === 'true') return false;
+  const style = getComputedStyle(element);
+  if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+    return false;
+  }
+  const rect = element.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
 export function getCompose(): HTMLElement | null {
   const footer = getFooter();
   const scopes: ParentNode[] = footer ? [footer, document] : [document];
@@ -155,11 +241,44 @@ export function getActiveChatId(): string | null {
   } catch {
     // ignore invalid URL
   }
+
+  const title = getHeaderTitle();
+
+  // Groups must stay on a stable title key — never bind to a participant PN.
+  if (isGroupChat()) {
+    return title ? `title:${title}` : null;
+  }
+
   const resolved = getHeaderPhone();
   if (resolved) return `phone:${resolved}`;
-  const title = getHeaderTitle();
   if (title) return `title:${title}`;
   return null;
+}
+
+/** Best-effort group detection from header / message ids. */
+export function isGroupChat(): boolean {
+  const header = getHeader();
+  if (header) {
+    const subtitle =
+      header.querySelector<HTMLElement>('[data-testid="chat-subtitle"]')?.textContent ??
+      header.querySelector<HTMLElement>('span[title]')?.nextElementSibling?.textContent ??
+      '';
+    if (/人|members|participants|在线|click here|点此查看/i.test(subtitle)) return true;
+    if (header.querySelector('[data-testid="group-info-drawer-section"], [data-icon="default-group"]')) {
+      return true;
+    }
+  }
+
+  const main = getMain();
+  if (!main) return false;
+  const sample = [...main.querySelectorAll<HTMLElement>('[data-id]')].slice(0, 40);
+  let groupHits = 0;
+  for (const node of sample) {
+    const id = node.getAttribute('data-id') ?? '';
+    if (/@g\.us/i.test(id)) groupHits += 1;
+    if (groupHits >= 2) return true;
+  }
+  return false;
 }
 
 /** Pull international digits only from contact-scoped DOM, never message IDs. */
@@ -194,9 +313,10 @@ function extractPhoneFromWaDom(): string | null {
   }
 
   const contactRoots = document.querySelectorAll<HTMLElement>(
-    '[data-testid="contact-info-drawer"], [data-testid="drawer-middle"], aside, [role="dialog"]',
+    '[data-testid="contact-info-drawer"], [data-testid="drawer-middle"], [data-testid="drawer-right"]',
   );
   for (const root of contactRoots) {
+    if (!isVisible(root)) continue;
     const exactNodes = root.querySelectorAll<HTMLElement>('span[dir="auto"], [title], a[href]');
     for (const node of exactNodes) {
       const raw = `${node.getAttribute('title') ?? ''} ${(node.textContent ?? '').trim()} ${node.getAttribute('href') ?? ''}`;
@@ -209,6 +329,9 @@ function extractPhoneFromWaDom(): string | null {
     const phone = extractPhoneFromWaId(raw);
     if (phone) return phone;
   }
+
+  // Never infer from message participant IDs in group chats.
+  if (isGroupChat()) return null;
   return extractPhoneFromCurrentMessageIds();
 }
 

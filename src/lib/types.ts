@@ -39,7 +39,6 @@ export interface AppState {
   templates: QuickReply[];
   tagPalette: TagDef[];
   chats: Record<string, ChatMeta>;
-  translationHistory: Record<string, { text: string; timestamp: number }>;
 }
 
 export interface PublicState {
@@ -47,7 +46,6 @@ export interface PublicState {
   templates: QuickReply[];
   tagPalette: TagDef[];
   chats: Record<string, ChatMeta>;
-  translationHistory: Record<string, { text: string; timestamp: number }>;
 }
 
 export const DEFAULT_SETTINGS: AiSettings = {
@@ -57,8 +55,8 @@ export const DEFAULT_SETTINGS: AiSettings = {
   projectKey: '',
   projectKeyHeader: 'Authorization',
   projectKeyScheme: 'bearer',
-  baseUrl: 'https://api.deepseek.com/v1',
-  model: 'deepseek-chat',
+  baseUrl: 'https://api.deepseek.com',
+  model: 'deepseek-v4-flash',
   transcribeModel: '',
   incomingLang: 'zh',
   outgoingLang: 'en',
@@ -89,7 +87,6 @@ export const DEFAULT_STATE: AppState = {
   templates: DEFAULT_TEMPLATES,
   tagPalette: DEFAULT_TAGS,
   chats: {},
-  translationHistory: {},
 };
 
 export function emptyChatMeta(): ChatMeta {

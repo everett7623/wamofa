@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { sendExtension } from '~/lib/messaging';
 import type { PublicState, QuickReply } from '~/lib/types';
 import { insertComposeText } from '~/wa/compose';
@@ -17,6 +17,7 @@ export function QuickReplyPanel({ state, onState, onToast, onClose }: Props) {
   const [body, setBody] = useState('');
   const [saving, setSaving] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const insertLock = useRef(false);
 
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const visibleTemplates = normalizedQuery
@@ -26,11 +27,17 @@ export function QuickReplyPanel({ state, onState, onToast, onClose }: Props) {
     : state.templates;
 
   async function apply(text: string) {
-    const result = await insertComposeText(text);
-    if (result === 'clipboard') onToast('已复制，请粘贴到输入框');
-    else if (result === 'fail') onToast('无法写入输入框');
-    else onToast('已插入模板');
-    onClose();
+    if (insertLock.current) return;
+    insertLock.current = true;
+    try {
+      const result = await insertComposeText(text);
+      if (result === 'clipboard') onToast('已复制，请粘贴到输入框');
+      else if (result === 'fail') onToast('无法写入输入框');
+      else onToast('已插入模板');
+      onClose();
+    } finally {
+      insertLock.current = false;
+    }
   }
 
   async function persist(templates: QuickReply[]) {

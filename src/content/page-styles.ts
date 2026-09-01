@@ -1,3 +1,7 @@
+import type { ContentScriptContext } from 'wxt/utils/content-script-context';
+
+const STYLE_ID = 'wamofa-page-style';
+
 export const PAGE_CSS = `
 /* WhatsApp 主区域适配 - 为右侧工具栏预留空间 */
 :root {
@@ -32,6 +36,10 @@ export const PAGE_CSS = `
   right: auto;
   left: -70px;
   flex-direction: row;
+}
+html.wamofa-translations-hidden .wamofa-toolbar,
+html.wamofa-translations-hidden .wamofa-result {
+  display: none !important;
 }
 .message-in:has(.wamofa-toolbar),
 .message-out:has(.wamofa-toolbar),
@@ -226,10 +234,13 @@ export const PAGE_CSS = `
 }
 `;
 
-export function injectPageStyles(): void {
-  if (document.getElementById('wamofa-page-style')) return;
+export function injectPageStyles(ctx?: ContentScriptContext): void {
+  // 扩展重载后旧 <style> 会留在页面上：沿用 id 判空会让新样式被整个跳过，
+  // 同时旧规则继续作用于 WhatsApp。因此先移除同 id 节点，再注入并登记清理。
+  document.getElementById(STYLE_ID)?.remove();
   const style = document.createElement('style');
-  style.id = 'wamofa-page-style';
+  style.id = STYLE_ID;
   style.textContent = PAGE_CSS;
   document.documentElement.append(style);
+  ctx?.onInvalidated(() => style.remove());
 }

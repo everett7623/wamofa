@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LANGUAGES } from '~/lib/langs';
 import { getPhoneInsights } from '~/lib/phone-insights';
+import { resolveChatLookup } from '~/lib/chat-keys';
 import { sendExtension } from '~/lib/messaging';
 import type { ChatMeta, PublicState } from '~/lib/types';
-import { emptyChatMeta } from '~/lib/types';
 
 interface Props {
   chatId: string;
@@ -15,7 +15,12 @@ interface Props {
 }
 
 export function HeaderBar({ chatId, title, headerPhone, dark, state, onState }: Props) {
-  const meta = state.chats[chatId] ?? emptyChatMeta();
+  const lookup = useMemo(
+    () => resolveChatLookup(state.chats, { chatId, title, phone: headerPhone }),
+    [state.chats, chatId, title, headerPhone],
+  );
+  const meta = lookup.meta;
+  const storageKey = lookup.key ?? chatId;
   const auto = meta.autoTranslate ?? state.settings.autoTranslateIncoming;
   const outgoingLang = meta.outgoingLang ?? state.settings.outgoingLang;
   const [note, setNote] = useState(meta.note);
@@ -23,6 +28,7 @@ export function HeaderBar({ chatId, title, headerPhone, dark, state, onState }: 
   const [nowTick, setNowTick] = useState(0);
   const [editingPhone, setEditingPhone] = useState(false);
   const [manualPhone, setManualPhone] = useState(meta.manualPhone || '');
+  const hintTimers = useRef<number[]>([]);
 
   useEffect(() => {
     setNote(meta.note);
@@ -35,6 +41,20 @@ export function HeaderBar({ chatId, title, headerPhone, dark, state, onState }: 
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(
+    () => () => {
+      for (const id of hintTimers.current) window.clearTimeout(id);
+      hintTimers.current = [];
+    },
+    [],
+  );
+
+  function showHint(text: string, ms = 1200) {
+    setHint(text);
+    const id = window.setTimeout(() => setHint(''), ms);
+    hintTimers.current.push(id);
+  }
+
   const selected = useMemo(() => new Set(meta.tagIds), [meta.tagIds]);
   const phoneInsights = useMemo(
     () => getPhoneInsights({ chatId, title, headerPhone, manualPhone: meta.manualPhone }),
@@ -42,28 +62,30 @@ export function HeaderBar({ chatId, title, headerPhone, dark, state, onState }: 
   );
 
   async function saveChat(patch: Partial<ChatMeta>) {
-    const nextMeta = { ...(state.chats[chatId] ?? emptyChatMeta()), ...patch };
+    // 以合并后的 meta 为基础：备注可能还挂在 title: 键上，
+    // 直接读 chats[storageKey] 会拿到空对象，保存瞬间备注会闪一下再回来。
+    const nextMeta = { ...meta, ...patch };
     onState({
       ...state,
-      chats: { ...state.chats, [chatId]: nextMeta },
+      chats: { ...state.chats, [storageKey]: nextMeta },
     });
     try {
       const res = await sendExtension({
         type: 'WAMOFA_UPSERT_CHAT',
-        chatId,
+        chatId: storageKey,
         patch,
+        aliasTitle: title,
       });
       if (res.ok && 'state' in res) onState(res.state);
-      if (!res.ok) setHint(res.error);
+      if (!res.ok) showHint(res.error, 2000);
     } catch {
-      setHint('保存失败，请重试');
+      showHint('保存失败，请重试', 2000);
     }
   }
 
   async function persistNote() {
     await saveChat({ note: note.trim() });
-    setHint('备注已保存');
-    window.setTimeout(() => setHint(''), 1200);
+    showHint('备注已保存');
   }
 
   async function toggleTag(id: string) {
@@ -74,21 +96,21 @@ export function HeaderBar({ chatId, title, headerPhone, dark, state, onState }: 
   }
 
   async function saveManualPhone() {
-    const cleaned = manualPhone.trim().replace(/\D/g, '');
-    if (cleaned && cleaned.length >= 4) {
-      await saveChat({ manualPhone: cleaned });
-      setEditingPhone(false);
-      setHint('号码已保存');
-      window.setTimeout(() => setHint(''), 1200);
-    } else if (!cleaned) {
+    const cleaned = manualPhone.trim().replace(/\D/g, '').replace(/^00/, '');
+    if (!cleaned) {
       await saveChat({ manualPhone: '' });
       setEditingPhone(false);
-      setHint('号码已清除');
-      window.setTimeout(() => setHint(''), 1200);
-    } else {
-      setHint('号码格式不正确');
-      window.setTimeout(() => setHint(''), 2000);
+      showHint('号码已清除');
+      return;
     }
+    // 口径必须与 getPhoneInsights 的取值一致，否则填了也不会生效。
+    if (cleaned.length < 8 || cleaned.length > 15) {
+      showHint('请填写 8-15 位完整号码（含国家码）', 2400);
+      return;
+    }
+    await saveChat({ manualPhone: cleaned });
+    setEditingPhone(false);
+    showHint('号码已保存');
   }
 
   return (
@@ -104,7 +126,7 @@ export function HeaderBar({ chatId, title, headerPhone, dark, state, onState }: 
               <input
                 type="tel"
                 className="wm-input wm-input-sm"
-                placeholder="输入完整号码（含国家码）"
+                placeholder="含国家码，如 8613800138000"
                 value={manualPhone}
                 onChange={(e) => setManualPhone(e.target.value)}
                 onKeyDown={(e) => {

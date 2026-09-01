@@ -1,9 +1,9 @@
-import { testConnection, transcribeAudio, translateText } from '~/lib/ai';
+import { listModels, testConnection, transcribeAudio, translateText } from '~/lib/ai';
 import type { ExtensionRequest, ExtensionResponse } from '~/lib/messaging';
 import {
   getState,
+  patchState,
   saveTemplates,
-  setState,
   toPublicState,
   upsertChat,
 } from '~/lib/storage';
@@ -46,20 +46,28 @@ async function handle(
         return { ok: false, error: '无权写入完整配置' };
       }
       const incoming = message.state;
-      const next = {
-        ...incoming,
+      // 汇入同一条写入链，并保留 current.chats：备注/标签只在 WhatsApp 页写入，
+      // 选项页持有的是打开时的快照，整体覆盖会把期间新增的备注冲掉。
+      const saved = await patchState((current) => ({
+        ...current,
         settings: {
           ...incoming.settings,
           apiKey: incoming.settings.apiKey.trim(),
           projectKey: incoming.settings.projectKey.trim(),
         },
-      };
-      return { ok: true, privateState: await setState(next) };
+        templates: incoming.templates,
+        tagPalette: incoming.tagPalette,
+      }));
+      return { ok: true, privateState: saved };
     }
     case 'WAMOFA_UPSERT_CHAT':
       return {
         ok: true,
-        state: toPublicState(await upsertChat(message.chatId, message.patch)),
+        state: toPublicState(
+          await upsertChat(message.chatId, message.patch, {
+            aliasTitle: message.aliasTitle,
+          }),
+        ),
       };
     case 'WAMOFA_SAVE_TEMPLATES':
       return {
@@ -84,6 +92,13 @@ async function handle(
       const { settings } = await getState();
       const text = await transcribeAudio(settings, message);
       return { ok: true, text };
+    }
+    case 'WAMOFA_LIST_MODELS': {
+      if (!isExtensionPage(sender)) {
+        return { ok: false, error: '请在选项页读取模型列表' };
+      }
+      const { settings } = await getState();
+      return { ok: true, models: await listModels(settings) };
     }
     case 'WAMOFA_TEST': {
       if (!isExtensionPage(sender)) {

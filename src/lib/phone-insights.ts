@@ -558,7 +558,7 @@ function pickPhoneCandidate(...candidates: Array<string | null | undefined>): st
   return '';
 }
 
-function formatLocalTime(timezone: string): { localTime: string; localHour: number } {
+function formatLocalTime(timezone: string): { localTime: string; localHour: number } | null {
   try {
     const localTime = new Intl.DateTimeFormat('zh-CN', {
       timeZone: timezone,
@@ -576,11 +576,8 @@ function formatLocalTime(timezone: string): { localTime: string; localHour: numb
         .find((part) => part.type === 'hour')?.value ?? '0';
     return { localTime, localHour: Number(hourText) };
   } catch {
-    const now = new Date();
-    return {
-      localTime: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
-      localHour: now.getHours(),
-    };
+    // 时区无效时宁可不显示，也不能把本机时间当成客户当地时间。
+    return null;
   }
 }
 
@@ -594,10 +591,14 @@ export function getPhoneInsights(input: {
     ? input.chatId.slice('phone:'.length)
     : '';
   const titleDigits = (input.title ?? '').match(/\+?\d[\d\s-]{7,}\d/)?.[0] ?? '';
-  // 优先使用手动输入的号码
-  const phone = input.manualPhone
-    ? input.manualPhone
-    : pickPhoneCandidate(input.headerPhone, chatPhone, titleDigits);
+  // 手动号码优先，但同样要过 extractDigits 与位数校验：
+  // 未校验的 4 位输入会命中国家前缀表，给出完全错误的国家和时区。
+  const phone = pickPhoneCandidate(
+    input.manualPhone,
+    input.headerPhone,
+    chatPhone,
+    titleDigits,
+  );
 
   const flagHint = findCountryByFlag(input.title ?? '');
   const byPhone = phone ? findCountryByPhone(phone) : null;

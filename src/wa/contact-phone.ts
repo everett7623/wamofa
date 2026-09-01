@@ -26,13 +26,37 @@ function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
+/**
+ * 只读打开 WhatsApp 自己的 model-storage。
+ * indexedDB.databases() 在 Firefox 上并不存在，跳过存在性检查后直接 open，
+ * 会把不存在的库创建成空的 version 1，进而干扰 WhatsApp 自身的 IDB 初始化。
+ * 所以用 onupgradeneeded 兜底：一旦触发就说明库本不存在，立刻中止创建。
+ */
 async function openModelStorage(): Promise<IDBDatabase | null> {
   try {
     if (typeof indexedDB.databases === 'function') {
       const databases = await indexedDB.databases();
       if (!databases.some((database) => database.name === 'model-storage')) return null;
     }
-    return await requestResult(indexedDB.open('model-storage'));
+    return await new Promise<IDBDatabase | null>((resolve) => {
+      const request = indexedDB.open('model-storage');
+      let creating = false;
+      request.onupgradeneeded = () => {
+        creating = true;
+        // 中止升级事务，浏览器会回滚这次创建，不留下空库。
+        request.transaction?.abort();
+      };
+      request.onsuccess = () => {
+        if (creating) {
+          request.result.close();
+          resolve(null);
+          return;
+        }
+        resolve(request.result);
+      };
+      request.onerror = () => resolve(null);
+      request.onblocked = () => resolve(null);
+    });
   } catch {
     return null;
   }
@@ -118,15 +142,21 @@ function getVisibleMessageCandidates(): MessageLookupCandidate[] {
   return candidates.reverse();
 }
 
-function trimCache(): void {
-  if (phoneByMessage.size <= 800) return;
-  const removeCount = phoneByMessage.size - 500;
+/** Map 按插入顺序淘汰最旧条目。 */
+function trimMap<V>(map: Map<string, V>, limit: number, keep: number): void {
+  if (map.size <= limit) return;
+  const removeCount = map.size - keep;
   let removed = 0;
-  for (const key of phoneByMessage.keys()) {
-    phoneByMessage.delete(key);
+  for (const key of map.keys()) {
+    map.delete(key);
     removed += 1;
     if (removed >= removeCount) break;
   }
+}
+
+function trimCache(): void {
+  trimMap(phoneByMessage, 800, 500);
+  trimMap(phoneByContactName, 400, 200);
 }
 
 async function findFullMessageKey(

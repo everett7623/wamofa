@@ -80,6 +80,14 @@
   color: var(--wm-ink);
 }
 
+/* WhatsApp's media/document composer owns the viewport edge while it is open.
+   Keep the native send control clickable and visible above the extension UI. */
+.wm-right-rail.is-media-preview,
+.wm-side-panel.is-media-preview {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .wm-rail-group {
   width: 100%;
   display: flex;
@@ -1182,3 +1190,38 @@
   opacity: 1;
 }
 
+.wm-open-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wm-open-chat-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wm-open-chat-prefix {
+  color: var(--wm-muted, #687872);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.wm-open-chat-hint {
+  margin: 0;
+  color: #b42318;
+  font-size: 12px;
+}
+
+.wm-open-chat-tip {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.wm-open-chat code {
+  font-size: 11px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--wm-canvas, #f5f8f7);
+}

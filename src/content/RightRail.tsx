@@ -1,13 +1,16 @@
 import type { ReactNode } from 'react';
 
-export type RailPanel = 'info' | 'translate' | 'quick' | null;
+export type RailPanel = 'info' | 'translate' | 'quick' | 'open' | null;
 
 interface Props {
   active: RailPanel;
   dark: boolean;
+  mediaPreviewOpen: boolean;
+  translationsHidden: boolean;
   chatReady: boolean;
   configured: boolean;
   onToggle: (panel: RailPanel) => void;
+  onToggleTranslations: () => void;
   onSettings: () => void;
 }
 
@@ -44,12 +47,41 @@ function IconQuick() {
   );
 }
 
+function IconOpenChat() {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.85 21 3 13.15 3 3a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.46.57 3.58a1 1 0 0 1-.25 1.01l-2.2 2.2Z"
+      />
+    </svg>
+  );
+}
+
 function IconSettings() {
   return (
     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
       <path
         fill="currentColor"
         d="M19.14 12.94a7.43 7.43 0 0 0 .05-.94 7.43 7.43 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.2 7.2 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.58.23-1.12.54-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.48a.5.5 0 0 0 .12.64l2.03 1.58c-.03.31-.05.62-.05.94s.02.63.05.94L2.83 14.16a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.5.4 1.05.72 1.63.94l.36 2.54a.5.5 0 0 0 .49.42h3.8a.5.5 0 0 0 .49-.42l.36-2.54c.58-.22 1.12-.54 1.63-.94l2.39.96a.5.5 0 0 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5Z"
+      />
+    </svg>
+  );
+}
+
+function IconEye({ hidden }: { hidden: boolean }) {
+  return hidden ? (
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="m3.27 2 18 18-1.41 1.41-3.12-3.12A10.9 10.9 0 0 1 12 19C5 19 1 12 1 12a20.8 20.8 0 0 1 4.22-4.95L1.86 3.41 3.27 2Zm3.37 6.46A17.6 17.6 0 0 0 3.35 12c1.14 1.64 4.18 5 8.65 5 1.13 0 2.14-.21 3.04-.55l-1.65-1.65A3.5 3.5 0 0 1 9.2 10.61L6.64 8.46ZM12 5c7 0 11 7 11 7a20.7 20.7 0 0 1-3.06 3.93l-1.42-1.42A17.2 17.2 0 0 0 20.65 12C19.51 10.36 16.47 7 12 7c-.61 0-1.2.04-1.75.13L8.58 5.46C9.63 5.16 10.77 5 12 5Zm-.35 3.52a3.5 3.5 0 0 1 3.83 3.83l-3.83-3.83Z"
+      />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M12 5c7 0 11 7 11 7s-4 7-11 7S1 12 1 12s4-7 11-7Zm0 2c-4.47 0-7.51 3.36-8.65 5C4.49 13.64 7.53 17 12 17s7.51-3.36 8.65-5C19.51 10.36 16.47 7 12 7Zm0 1.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Zm0 2a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"
       />
     </svg>
   );
@@ -64,12 +96,23 @@ const ITEMS: Array<{
   { id: 'info', label: '客户', title: '客户信息', icon: <IconUser /> },
   { id: 'translate', label: '译出', title: '翻译发出', icon: <IconTranslate /> },
   { id: 'quick', label: '快捷', title: '快捷回复', icon: <IconQuick /> },
+  { id: 'open', label: '开聊', title: '不存号码开聊', icon: <IconOpenChat /> },
 ];
 
-export function RightRail({ active, dark, chatReady, configured, onToggle, onSettings }: Props) {
+export function RightRail({
+  active,
+  dark,
+  mediaPreviewOpen,
+  translationsHidden,
+  chatReady,
+  configured,
+  onToggle,
+  onToggleTranslations,
+  onSettings,
+}: Props) {
   return (
     <aside
-      className={`wm-right-rail ${dark ? 'is-dark' : ''}`}
+      className={`wm-right-rail ${dark ? 'is-dark' : ''} ${mediaPreviewOpen ? 'is-media-preview' : ''}`}
       aria-label="WAMofa"
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
@@ -108,6 +151,22 @@ export function RightRail({ active, dark, chatReady, configured, onToggle, onSet
             {item.id === 'info' && chatReady ? <i className="wm-rail-dot" aria-hidden="true" /> : null}
           </button>
         ))}
+        <span className="wm-rail-divider" aria-hidden="true" />
+        <button
+          type="button"
+          className={`wm-rail-item ${translationsHidden ? 'is-active' : ''}`}
+          title={`${translationsHidden ? '显示译文' : '隐藏译文'}（Alt+Shift+H）`}
+          aria-label={translationsHidden ? '显示译文' : '隐藏译文'}
+          aria-pressed={translationsHidden}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleTranslations();
+          }}
+        >
+          <span className="wm-rail-icon"><IconEye hidden={translationsHidden} /></span>
+          <span className="wm-rail-label">{translationsHidden ? '显示' : '隐藏'}</span>
+        </button>
       </div>
 
       <div className="wm-rail-group wm-rail-bottom">

@@ -1,10 +1,12 @@
 import { captureVoiceAudio } from '~/content/voice';
 import { getRuntimeChatId, getRuntimeState } from '~/content/runtime';
+import { resolveChatLookup } from '~/lib/chat-keys';
 import { sendExtension } from '~/lib/messaging';
 import type { PublicState } from '~/lib/types';
 import {
   ENHANCED,
   findMessageBubbles,
+  getHeaderTitle,
   getMessageId,
   getMessagePane,
   getMessageText,
@@ -16,7 +18,9 @@ const translationCache = new Map<string, string>();
 const transcribeCache = new Map<string, string>();
 const inflight = new Set<string>();
 const autoAttempted = new Set<string>();
-const renderedResultKey = new Map<HTMLElement, string>();
+// WeakMap：气泡从 DOM 移除后可被回收，避免长时间滚动累积强引用。
+let renderedResultKey = new WeakMap<HTMLElement, string>();
+const TRANSLATIONS_HIDDEN_CLASS = 'wamofa-translations-hidden';
 
 const TRANSLATE_ICON =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04ZM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12Zm-2.62 7l1.62-4.33L19.12 17h-3.24Z"/></svg>';
@@ -44,7 +48,11 @@ export function clearMessageCaches(): void {
   transcribeCache.clear();
   inflight.clear();
   autoAttempted.clear();
-  renderedResultKey.clear();
+  renderedResultKey = new WeakMap();
+}
+
+export function setTranslationsHidden(hidden: boolean): void {
+  document.documentElement.classList.toggle(TRANSLATIONS_HIDDEN_CLASS, hidden);
 }
 
 function cacheKey(msgId: string): string {
@@ -85,12 +93,34 @@ function normalizeToolbarHost(bubble: HTMLElement): HTMLElement {
 export function enhanceMessages(state: PublicState): void {
   const pane = getMessagePane();
   if (!pane) return;
+  // 每轮扫描只解析一次会话设置：号码刚识别出来时 chatId 已是 phone:，
+  // 而备注/开关可能还挂在 title: 键上，直接用 chatId 索引会读空，
+  // 让会话级的自动翻译在迁移完成前静默回退到全局默认。
+  const { meta } = resolveChatLookup(state.chats, {
+    chatId: getRuntimeChatId(),
+    title: getHeaderTitle(),
+  });
+  const autoTranslate = meta.autoTranslate ?? state.settings.autoTranslateIncoming;
   for (const bubble of findMessageBubbles(pane)) {
-    enhanceBubble(bubble, state);
+    enhanceBubble(bubble, state, autoTranslate);
   }
 }
 
-function enhanceBubble(bubble: HTMLElement, state: PublicState): void {
+/**
+ * 挂载点必须是定位元素，工具栏才能绝对定位。只在挂载时判定一次：
+ * 每轮扫描对每个气泡调用 getComputedStyle 会强制重排，滚动明显掉帧。
+ */
+function ensureRelativeHost(host: HTMLElement): void {
+  if (host.dataset.wamofaHost === '1') return;
+  if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+  host.dataset.wamofaHost = '1';
+}
+
+function enhanceBubble(
+  bubble: HTMLElement,
+  state: PublicState,
+  autoTranslate: boolean,
+): void {
   if (!bubble.isConnected) return;
   const id = getMessageId(bubble);
   const key = cacheKey(id);
@@ -120,10 +150,13 @@ function enhanceBubble(bubble: HTMLElement, state: PublicState): void {
     toolbar.append(translateBtn);
 
     host.append(toolbar);
+    ensureRelativeHost(host);
+  } else if (toolbar.parentElement !== host) {
+    host.append(toolbar);
+    ensureRelativeHost(host);
   }
-  if (toolbar.parentElement !== host) host.append(toolbar);
-  if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
-  toolbar.className = `wamofa-toolbar${isOutgoing(bubble) ? ' is-out' : ''}`;
+  const outgoing = isOutgoing(bubble);
+  toolbar.className = `wamofa-toolbar${outgoing ? ' is-out' : ''}`;
 
   const existingVoice = toolbar.querySelector<HTMLButtonElement>('[data-kind="voice"]');
   if (isVoiceMessage(bubble) && !existingVoice) {
@@ -147,10 +180,7 @@ function enhanceBubble(bubble: HTMLElement, state: PublicState): void {
   const cached = translationCache.get(key);
   if (cached) renderResult(bubble, cached, false, key);
 
-  const chatId = getRuntimeChatId() ?? '';
-  const auto =
-    state.chats[chatId]?.autoTranslate ?? state.settings.autoTranslateIncoming;
-  if (auto && !isOutgoing(bubble) && !cached && !autoAttempted.has(key)) {
+  if (autoTranslate && !outgoing && !cached && !autoAttempted.has(key)) {
     void runTranslate(bubble, false);
   }
 }
@@ -177,12 +207,9 @@ async function runTranslate(bubble: HTMLElement, force: boolean): Promise<void> 
     }
   }
 
-  if (
-    !force &&
-    (translationCache.has(key) || inflight.has(key) || autoAttempted.has(key))
-  ) {
-    return;
-  }
+  // 同一条消息已有请求在途时不重复发起，force 也一样。
+  if (inflight.has(key)) return;
+  if (!force && (translationCache.has(key) || autoAttempted.has(key))) return;
 
   const text = getMessageText(bubble);
   if (!shouldTranslate(text)) return;
@@ -300,21 +327,16 @@ function isCurrentBubble(bubble: HTMLElement, expectedKey: string): boolean {
   return bubble.isConnected && cacheKey(getMessageId(bubble)) === expectedKey;
 }
 
-function setBusy(bubble: HTMLElement, label: string, busy: boolean): void {
-  const btn = [...bubble.querySelectorAll<HTMLButtonElement>('button.wamofa-icon-btn')].find(
-    (el) =>
-      (label === '翻译' ? el.dataset.kind === 'translate' : el.dataset.kind === 'voice') ||
-      el.title === (label === '翻译' ? '翻译此条' : '转写此条'),
+function setBusy(bubble: HTMLElement, label: '翻译' | '转写', busy: boolean): void {
+  const kind = label === '翻译' ? 'translate' : 'voice';
+  const btn = bubble.querySelector<HTMLButtonElement>(
+    `button.wamofa-icon-btn[data-kind="${kind}"]`,
   );
   if (!btn) return;
   btn.disabled = busy;
-  if (busy) {
-    btn.dataset.old = btn.innerHTML;
-    btn.textContent = '…';
-  } else {
-    btn.innerHTML =
-      btn.dataset.old || (label === '翻译' ? TRANSLATE_ICON : VOICE_ICON);
-  }
+  // 图标是模块常量，直接还原即可，不必把 SVG 暂存到 dataset。
+  if (busy) btn.textContent = '…';
+  else btn.innerHTML = kind === 'translate' ? TRANSLATE_ICON : VOICE_ICON;
 }
 
 function renderResult(

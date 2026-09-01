@@ -1,4 +1,6 @@
 import { formatHeaderInsightLabel, getPhoneInsights } from '~/lib/phone-insights';
+import { resolveChatLookup } from '~/lib/chat-keys';
+import { getRuntimeState } from '~/content/runtime';
 import {
   getActiveChatId,
   getHeader,
@@ -77,10 +79,19 @@ export function enhanceHeaderInsights(): void {
   if (!header) return;
 
   const title = getHeaderTitle();
-  const insights = getPhoneInsights({
-    chatId: getActiveChatId(),
+  const chatId = getActiveChatId();
+  const headerPhone = getHeaderPhone();
+  const state = getRuntimeState();
+  const { meta } = resolveChatLookup(state?.chats ?? {}, {
+    chatId,
     title,
-    headerPhone: getHeaderPhone(),
+    phone: headerPhone,
+  });
+  const insights = getPhoneInsights({
+    chatId,
+    title,
+    headerPhone,
+    manualPhone: meta.manualPhone,
   });
   const label = formatHeaderInsightLabel(insights);
   let slot = header.querySelector<HTMLElement>(`.${SLOT_CLASS}`);

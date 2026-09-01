@@ -1,8 +1,8 @@
 {
   "name": "wamofa",
-  "description": "WhatsApp Web 助手：AI 翻译、客户备注标签、快捷回复、语音转写、数据导出",
+  "description": "WhatsApp Web 助手：AI 翻译、客户备注标签、快捷回复、语音转写",
   "private": true,
-  "version": "0.2.5",
+  "version": "0.2.17",
   "type": "module",
   "scripts": {
     "dev": "wxt",

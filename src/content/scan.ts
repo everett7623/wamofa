@@ -29,5 +29,15 @@ export function bindScanObserver(ctx: ContentScriptContext): void {
   const root = document.getElementById('app') ?? document.body;
   const observer = new MutationObserver(() => scheduleScan());
   observer.observe(root, { childList: true, subtree: true });
-  ctx.onInvalidated(() => observer.disconnect());
+  ctx.onInvalidated(() => {
+    observer.disconnect();
+    if (timer != null) {
+      window.clearTimeout(timer);
+      timer = null;
+    }
+    if (raf != null) {
+      cancelAnimationFrame(raf);
+      raf = null;
+    }
+  });
 }
