@@ -10,6 +10,7 @@ import {
   getMessageId,
   getMessagePane,
   getMessageText,
+  isIncoming,
   isOutgoing,
   isVoiceMessage,
 } from '~/wa/dom';
@@ -180,7 +181,9 @@ function enhanceBubble(
   const cached = translationCache.get(key);
   if (cached) renderResult(bubble, cached, false, key);
 
-  if (autoTranslate && !outgoing && !cached && !autoAttempted.has(key)) {
+  // 必须是「明确的来消息」才自动翻译：!outgoing 在消息刚发出、
+  // WhatsApp 尚未标记方向的窗口里为真，会把自己发的内容也翻一遍。
+  if (autoTranslate && isIncoming(bubble) && !cached && !autoAttempted.has(key)) {
     void runTranslate(bubble, false);
   }
 }

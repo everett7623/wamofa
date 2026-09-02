@@ -7,7 +7,9 @@ import { RightRail, type RailPanel } from '~/content/RightRail';
 import { setRuntimeChatId } from '~/content/runtime';
 import { registerShortcut, unregisterShortcut, type ShortcutHandler } from '~/content/shortcuts';
 import { sendExtension } from '~/lib/messaging';
-import { parsePhoneFromChatId, parseTitleFromChatId } from '~/lib/chat-keys';
+import { langLabel } from '~/lib/langs';
+import { parsePhoneFromChatId, parseTitleFromChatId, resolveChatLookup } from '~/lib/chat-keys';
+import { getComposeText, setComposeText } from '~/wa/compose';
 import type { PublicState } from '~/lib/types';
 import { setTranslationsHidden } from '~/content/messages';
 import {
@@ -165,6 +167,12 @@ export function OverlayApp({ state, onState }: Props) {
         },
       },
       {
+        action: 'translate-compose',
+        keys: ['alt', 'shift', 'enter'],
+        description: '把输入框内容译成发出语言',
+        handler: () => translateComposeRef.current(),
+      },
+      {
         action: 'toggle-translations',
         keys: ['alt', 'shift', 'h'],
         description: '隐藏或显示翻译结果',
@@ -187,6 +195,50 @@ export function OverlayApp({ state, onState }: Props) {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [activePanel]);
+
+  const composeBusyRef = useRef(false);
+
+  /**
+   * 把 WhatsApp 输入框里的内容就地译成该会话的发出语言。
+   * 只替换文本、不代替用户发送：译文发出去就撤不回来，报价和规格必须过一眼。
+   */
+  async function translateCompose() {
+    if (composeBusyRef.current) return;
+    const text = getComposeText().trim();
+    if (!text) {
+      setToast('输入框是空的');
+      return;
+    }
+    if (!state.settings.hasKey) {
+      setToast('请先在 WAMofa 设置里填写 API Key');
+      return;
+    }
+    const { meta } = resolveChatLookup(state.chats, { chatId, title, phone: headerPhone });
+    const targetLang = meta.outgoingLang ?? state.settings.outgoingLang;
+    composeBusyRef.current = true;
+    setToast(`正在译成${langLabel(targetLang)}…`);
+    try {
+      const res = await sendExtension({ type: 'WAMOFA_TRANSLATE', text, targetLang });
+      if (!res.ok || !('text' in res)) {
+        setToast(res.ok ? '翻译失败' : res.error);
+        return;
+      }
+      const written = await setComposeText(res.text);
+      if (written === 'clipboard') setToast('已复制译文，请粘贴到输入框');
+      else if (written === 'fail') setToast('无法写入输入框');
+      else setToast('已替换为译文，确认后按 Enter 发送');
+    } catch {
+      setToast('翻译请求失败，请检查网络与接口配置');
+    } finally {
+      composeBusyRef.current = false;
+    }
+  }
+
+  // 快捷键在 [chatId] 变化时才重新注册，这里用 ref 让 handler 始终拿到最新的 state。
+  const translateComposeRef = useRef<() => void>(() => {});
+  translateComposeRef.current = () => {
+    void translateCompose();
+  };
 
   async function openSettings() {
     const res = await sendExtension({ type: 'WAMOFA_OPEN_OPTIONS' });

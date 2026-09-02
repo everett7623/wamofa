@@ -471,6 +471,20 @@ export function isOutgoing(el: HTMLElement): boolean {
   return false;
 }
 
+/**
+ * 明确判定为「收到的消息」。
+ * 自动翻译必须用它而不是 !isOutgoing()：消息刚发出的一瞬间 WhatsApp 还没打上
+ * message-out 标记，此时 isOutgoing 返回 false，自己发的内容会被当成来消息翻译，
+ * 而 autoAttempted 只记一次，错误结果就固定下来了。
+ * 证据不足时宁可不翻译——手动点按钮始终可用。
+ */
+export function isIncoming(el: HTMLElement): boolean {
+  const row = normalizeBubble(el) ?? el;
+  if (row.classList.contains('message-in') || row.closest('.message-in')) return true;
+  const id = row.getAttribute('data-id') || '';
+  return id.startsWith('false_');
+}
+
 export function getMessageId(el: HTMLElement): string {
   const row = normalizeBubble(el) ?? el;
   const ids = [
@@ -505,12 +519,14 @@ function hashText(text: string): string {
 
 export function getMessageText(el: HTMLElement): string {
   const row = normalizeBubble(el) ?? el;
+  // `.copyable-text span` 会一并选中时间戳那个 span，必须和 tier2 用同一套过滤，
+  // 否则 bestUniqueText 会把 "11:07" 拼到正文后面一起送去翻译。
   const tier1 = [...row.querySelectorAll<HTMLElement>(
     'span.selectable-text.copyable-text, span.selectable-text, .copyable-text span',
   )]
     .filter((node) => !isWamofaNode(node))
     .map((node) => node.textContent?.trim() ?? '')
-    .filter(Boolean);
+    .filter((text) => text && !looksLikeIcon(text) && !looksLikeTimestamp(text));
   if (tier1.length) return bestUniqueText(tier1);
 
   const tier2 = [...row.querySelectorAll<HTMLElement>('span[dir="ltr"], span[dir="rtl"]')]
@@ -552,7 +568,13 @@ function looksLikeIcon(text: string): boolean {
 }
 
 function looksLikeTimestamp(text: string): boolean {
-  return /^\d{1,2}:\d{2}$/.test(text) || /^[\d:/\s,APM]+$/.test(text);
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(text)) return true;
+  // 必须含 : 或 /，否则 "1000"、"1,000" 这类数量和报价会被当成时间戳丢掉
+  if (/[:/]/.test(text) && /^[\d:/\s,APM]+$/i.test(text)) return true;
+  // 中文界面的 12 小时制：下午3:20 / 上午 9:05
+  if (/^(上午|下午|凌晨|早上|中午|晚上)\s*\d{1,2}:\d{2}$/.test(text)) return true;
+  // 气泡角落的状态词，同样不属于正文
+  return /^(已编辑|Edited|已转发|Forwarded)$/i.test(text);
 }
 
 export function isVoiceMessage(el: HTMLElement): boolean {

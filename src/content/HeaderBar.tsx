@@ -229,6 +229,9 @@ export function HeaderBar({ chatId, title, headerPhone, dark, state, onState }: 
             ))}
           </select>
         </label>
+        <p className="wm-inline-hint">
+          译出目标语言：在输入框按 Alt+Shift+Enter 就地译成该语言，确认后自己发送
+        </p>
       </section>
 
       <section className="wm-card-section">

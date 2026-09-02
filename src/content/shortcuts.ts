@@ -5,6 +5,7 @@
 
 export type ShortcutAction =
   | 'translate-selected'
+  | 'translate-compose'
   | 'open-quick-reply'
   | 'open-customer-info'
   | 'open-translate-panel'
@@ -95,6 +96,8 @@ export function handleKeyDown(event: Event): void {
       'open-customer-info',
       'open-translate-panel',
       'toggle-translations',
+      // 译出就是要在输入框里按的，必须放行
+      'translate-compose',
     ].includes(handler.action)
   ) {
     return;

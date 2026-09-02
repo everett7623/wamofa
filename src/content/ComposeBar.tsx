@@ -35,7 +35,28 @@ export function ComposeBar({ chatId, title, headerPhone, state, onToast }: Props
     onToast(text ? '已读取输入框' : '输入框是空的');
   }
 
-  async function translateInput() {
+  async function applyText(text: string) {
+    if (insertLock.current || !text.trim()) return;
+    insertLock.current = true;
+    setInserting(true);
+    try {
+      const result = await setComposeText(text.trim());
+      if (result === 'clipboard') {
+        onToast('已复制译文，请在输入框粘贴');
+      } else if (result === 'fail') {
+        onToast('无法写入输入框');
+      } else {
+        onToast('已替换输入框，请确认后发送');
+        setPreview('');
+      }
+    } finally {
+      insertLock.current = false;
+      setInserting(false);
+    }
+  }
+
+  /** autoApply 为真时译完直接写回 WhatsApp 输入框，省掉一次点击。 */
+  async function translateInput(autoApply = false) {
     const text = source.trim() || getComposeText().trim();
     if (!text) {
       onToast('输入框是空的');
@@ -57,31 +78,15 @@ export function ComposeBar({ chatId, title, headerPhone, state, onToast }: Props
         onToast(!res.ok ? res.error : '翻译失败');
         return;
       }
+      if (autoApply) {
+        await applyText(res.text);
+        return;
+      }
       setPreview(res.text);
     } catch {
       onToast('翻译请求失败，请检查网络与接口配置');
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function replaceInput() {
-    if (insertLock.current || !preview.trim()) return;
-    insertLock.current = true;
-    setInserting(true);
-    try {
-      const result = await setComposeText(preview.trim());
-      if (result === 'clipboard') {
-        onToast('已复制译文，请在输入框粘贴');
-      } else if (result === 'fail') {
-        onToast('无法写入输入框');
-      } else {
-        onToast('已替换输入框，请确认后发送');
-        setPreview('');
-      }
-    } finally {
-      insertLock.current = false;
-      setInserting(false);
     }
   }
 
@@ -107,12 +112,36 @@ export function ComposeBar({ chatId, title, headerPhone, state, onToast }: Props
             setSource(event.target.value);
             setPreview('');
           }}
+          onKeyDown={(event) => {
+            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+              event.preventDefault();
+              void translateInput(true);
+            }
+          }}
         />
       </label>
 
-      <button type="button" className="wm-btn wm-btn-block" disabled={busy} onClick={() => void translateInput()}>
-        {busy ? '正在翻译…' : `翻译成${language}`}
-      </button>
+      <div className="wm-result-actions">
+        <button
+          type="button"
+          className="wm-btn ghost"
+          disabled={busy || inserting}
+          onClick={() => void translateInput()}
+        >
+          先预览
+        </button>
+        <button
+          type="button"
+          className="wm-btn"
+          disabled={busy || inserting}
+          onClick={() => void translateInput(true)}
+        >
+          {busy ? '正在翻译…' : `译成${language}并写入输入框`}
+        </button>
+      </div>
+      <p className="wm-panel-muted">
+        输入框内直接按 <code>Alt+Shift+Enter</code> 也可就地译出；译文只替换输入框，不会自动发送。
+      </p>
 
       {preview ? (
         <div className="wm-translation-result">
@@ -132,7 +161,7 @@ export function ComposeBar({ chatId, title, headerPhone, state, onToast }: Props
               type="button"
               className="wm-btn"
               disabled={inserting}
-              onClick={() => void replaceInput()}
+              onClick={() => void applyText(preview)}
             >
               {inserting ? '正在替换…' : '替换 WhatsApp 输入框'}
             </button>
