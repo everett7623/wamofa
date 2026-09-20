@@ -1,13 +1,20 @@
 import { useEffect, useState } from 'react';
 import { sendExtension } from '~/lib/messaging';
-import { buildOpenChatRequest } from '~/lib/phone';
+import { buildOpenChatRequest, phoneExample, phoneFormatHint } from '~/lib/phone';
 import { getProvider } from '~/lib/providers';
 import type { PublicState } from '~/lib/types';
+
+interface Hint {
+  text: string;
+  error: boolean;
+}
 
 export default function App() {
   const [state, setState] = useState<PublicState | null>(null);
   const [phone, setPhone] = useState('');
-  const [hint, setHint] = useState('');
+  const [hint, setHint] = useState<Hint | null>(null);
+  // 默认区号现在只用于占位示例，不再参与号码补全
+  const countryCode = state?.settings.defaultCountryCode ?? '86';
 
   useEffect(() => {
     void sendExtension({ type: 'WAMOFA_GET_STATE' }).then((res) => {
@@ -16,9 +23,9 @@ export default function App() {
   }, []);
 
   async function openChat() {
-    const result = buildOpenChatRequest(phone, state?.settings.defaultCountryCode ?? '86');
+    const result = buildOpenChatRequest(phone);
     if (!result.ok) {
-      setHint(result.error);
+      setHint({ text: result.error, error: true });
       return;
     }
     try {
@@ -35,9 +42,9 @@ export default function App() {
       } else {
         await browser.tabs.create({ url: result.url });
       }
-      setHint(`正在打开 +${result.normalized}`);
+      setHint({ text: `正在打开 +${result.normalized}`, error: false });
     } catch {
-      setHint('无法打开 WhatsApp Web，请稍后重试');
+      setHint({ text: '无法打开 WhatsApp Web，请稍后重试', error: true });
     }
   }
 
@@ -71,27 +78,32 @@ export default function App() {
           <i aria-hidden="true">↗</i>
         </div>
         <label className="phone-field">
-          <span aria-hidden="true">+</span>
           <input
             inputMode="tel"
             autoComplete="tel"
             aria-label="电话号码"
-            aria-invalid={hint === '请输入有效号码'}
-            placeholder="86 138 0000 0000"
+            aria-invalid={hint?.error ?? false}
+            aria-describedby="phone-note"
+            placeholder={phoneExample(countryCode)}
             value={phone}
             onChange={(event) => {
               setPhone(event.target.value);
-              if (hint) setHint('');
+              if (hint) setHint(null);
             }}
             onKeyDown={(event) => {
               if (event.key === 'Enter') void openChat();
             }}
           />
         </label>
+        <p id="phone-note" className="phone-note">{phoneFormatHint(countryCode)}</p>
         <button type="button" className="open-chat-btn" onClick={() => void openChat()}>
           打开对话 <span aria-hidden="true">→</span>
         </button>
-        {hint ? <p className="popup-hint" role="status">{hint}</p> : null}
+        {hint ? (
+          <p className={`popup-hint${hint.error ? ' is-error' : ''}`} role={hint.error ? 'alert' : 'status'}>
+            {hint.text}
+          </p>
+        ) : null}
       </section>
 
       <footer className="popup-footer">

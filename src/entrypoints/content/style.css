@@ -1202,12 +1202,6 @@
   gap: 6px;
 }
 
-.wm-open-chat-prefix {
-  color: var(--wm-muted, #687872);
-  font-size: 16px;
-  font-weight: 600;
-}
-
 .wm-open-chat-hint {
   margin: 0;
   color: #b42318;
@@ -1215,7 +1209,7 @@
 }
 
 .wm-open-chat-tip {
-  margin-top: 4px;
+  margin-top: -4px; /* 贴近输入框，与说明文字成组 */
   font-size: 11px;
 }
 

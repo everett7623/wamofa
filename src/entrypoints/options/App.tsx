@@ -561,7 +561,7 @@ export default function App() {
             </select>
           </label>
           <label className="grid gap-1 text-sm">
-            默认国家区号
+            默认国家区号（仅作开聊输入框示例）
             <input
               className="field"
               value={state.settings.defaultCountryCode}

@@ -222,11 +222,6 @@ input:focus-visible {
   box-shadow: 0 0 0 3px rgba(7, 139, 112, 0.09);
 }
 
-.phone-field > span {
-  font-size: 15px;
-  font-weight: 500;
-}
-
 .phone-field input {
   min-width: 0;
   flex: 1;
@@ -276,6 +271,17 @@ input:focus-visible {
   margin: 8px 1px 0;
   color: var(--brand);
   font-size: 9px;
+}
+
+.popup-hint.is-error {
+  color: #b42318;
+}
+
+.phone-note {
+  margin: 6px 1px 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .popup-footer {
