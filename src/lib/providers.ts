@@ -53,7 +53,15 @@ export const PROVIDERS: ProviderPreset[] = [
     supportsTranscribe: true,
     hint: 'OpenAI 官方接口；文本走 Chat Completions，语音走 Transcriptions。',
     preferredAuthMode: 'apiKey',
-    modelOptions: ['gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-5.6-sol', 'gpt-4.1-mini', 'gpt-4o-mini'],
+    modelOptions: [
+      'gpt-5.6-luna',
+      'gpt-5.6-terra',
+      'gpt-5.6-sol',
+      'gpt-4.1',
+      'gpt-4.1-mini',
+      'gpt-4o',
+      'gpt-4o-mini',
+    ],
     transcribeModelOptions: ['gpt-4o-mini-transcribe', 'gpt-4o-transcribe', 'whisper-1'],
   },
   {
@@ -93,6 +101,50 @@ export const PROVIDERS: ProviderPreset[] = [
       'deepseek-chat': 'deepseek-v4-flash',
       'deepseek-reasoner': 'deepseek-v4-flash',
     },
+  },
+  {
+    id: 'zhipu',
+    name: '智谱 GLM（Z.AI）',
+    baseUrl: 'https://api.z.ai/api/paas/v4',
+    model: 'glm-4.7-flash',
+    chatProtocol: 'openai-chat',
+    chatPath: 'chat/completions',
+    transcribeModel: '',
+    supportsTranscribe: false,
+    hint: '智谱官方 OpenAI 兼容接口。默认国际站 api.z.ai；国内开放平台或 Coding Plan 可改 Base URL。高频翻译建议 Flash，复杂文本可用 GLM-5.3。',
+    preferredAuthMode: 'apiKey',
+    configurableBaseUrl: true,
+    modelOptions: [
+      'glm-4.7-flash',
+      'glm-5.3-flash',
+      'glm-5.3',
+      'glm-5.2',
+      'glm-5-turbo',
+      'glm-4.7',
+      'glm-4.5-flash',
+      'glm-4.5-air',
+    ],
+    legacyModelMap: {
+      'glm-4-flash': 'glm-4.5-flash',
+      'glm-4-air': 'glm-4.5-air',
+      'glm-4-plus': 'glm-5.3',
+      glm4: 'glm-4.7-flash',
+    },
+  },
+  {
+    id: 'qwen',
+    name: '通义千问',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    model: 'qwen-flash',
+    chatProtocol: 'openai-chat',
+    chatPath: 'chat/completions',
+    modelsPath: 'models',
+    transcribeModel: '',
+    supportsTranscribe: false,
+    hint: '阿里云 DashScope 的 OpenAI 兼容接口。默认国内北京节点；国际站把 Base URL 改成 dashscope-intl.aliyuncs.com/compatible-mode/v1。',
+    preferredAuthMode: 'apiKey',
+    configurableBaseUrl: true,
+    modelOptions: ['qwen-flash', 'qwen-plus', 'qwen-max', 'qwen-turbo'],
   },
   {
     id: 'gemini',
@@ -174,6 +226,10 @@ export const PROVIDERS: ProviderPreset[] = [
       'gemini-3.7-flash',
       'grok-4.6',
       'deepseek-v4-flash',
+      'glm-4.7-flash',
+      'glm-5.3',
+      'qwen-flash',
+      'qwen-plus',
     ],
   },
   {
@@ -193,13 +249,25 @@ export const PROVIDERS: ProviderPreset[] = [
     preferredAuthMode: 'apiKey',
     configurableAuth: true,
     configurableBaseUrl: true,
-    modelOptions: ['gpt-5.6-luna', 'claude-sonnet-5', 'gemini-3.7-flash', 'grok-4.6', 'deepseek-v4-flash'],
+    modelOptions: [
+      'gpt-5.6-luna',
+      'claude-sonnet-5',
+      'gemini-3.7-flash',
+      'grok-4.6',
+      'deepseek-v4-flash',
+      'glm-4.7-flash',
+      'glm-5.3',
+      'qwen-flash',
+    ],
     transcribeModelOptions: ['gpt-4o-mini-transcribe', 'gpt-4o-transcribe', 'whisper-1'],
   },
 ];
 
 export function normalizeProviderId(id: string): string {
-  return id === 'groq' || id === 'grop' ? 'grok' : id;
+  if (id === 'groq' || id === 'grop') return 'grok';
+  if (id === 'zai' || id === 'zhipuai' || id === 'glm' || id === 'bigmodel') return 'zhipu';
+  if (id === 'dashscope' || id === 'tongyi') return 'qwen';
+  return id;
 }
 
 export function getProvider(id: string): ProviderPreset {

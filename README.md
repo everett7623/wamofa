@@ -72,7 +72,7 @@ npm run build
 
 ## 🔧 配置
 
-点击扩展图标 → 选项，配置 AI 服务商与 API Key。支持 OpenAI、Claude、DeepSeek、Gemini、Grok、Sub2API 及自定义 OpenAI 兼容接口。
+点击扩展图标 → 选项，配置 AI 服务商与 API Key。支持 OpenAI、Claude、DeepSeek、智谱 GLM、通义千问、Gemini、Grok、Sub2API 及自定义 OpenAI 兼容接口。
 
 ---
 

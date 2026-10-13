@@ -1,5 +1,14 @@
 # 更新日志
 
+## [0.2.21] - 2026-09-20
+
+### ✨ 功能
+- **智谱 GLM（Z.AI）**：选项页新增智谱预设，走官方 OpenAI 兼容接口 `https://api.z.ai/api/paas/v4`，预置 GLM-4.7-Flash（默认，适合高频翻译）、GLM-5.3 / 5.3-Flash / 5.2 / 5-Turbo / 4.7 等常用模型。国内开放平台或 Coding Plan 可改 Base URL
+- **通义千问**：新增 DashScope OpenAI 兼容预设（默认国内节点），预置 qwen-flash / plus / max / turbo
+- **OpenAI 常用模型**：文本模型下拉补充 `gpt-4.1`、`gpt-4o`
+
+---
+
 ## [0.2.20] - 2026-09-20
 
 ### ⚠️ 使用变化

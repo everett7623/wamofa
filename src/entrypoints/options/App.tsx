@@ -247,6 +247,19 @@ export default function App() {
             Base URL 可填网关根地址或以 <code>/v1</code> 结尾的地址；默认使用 <code>Authorization: Bearer</code>，并可从 <code>/v1/models</code> 读取该分组可用模型。
           </p>
         ) : null}
+        {provider.id === 'zhipu' ? (
+          <p className="text-xs text-muted">
+            国际站默认 <code>https://api.z.ai/api/paas/v4</code>；国内智谱开放平台改为{' '}
+            <code>https://open.bigmodel.cn/api/paas/v4</code>。Coding Plan 用户可改为{' '}
+            <code>https://api.z.ai/api/coding/paas/v4</code>。
+          </p>
+        ) : null}
+        {provider.id === 'qwen' ? (
+          <p className="text-xs text-muted">
+            国内默认 <code>https://dashscope.aliyuncs.com/compatible-mode/v1</code>；国际站改为{' '}
+            <code>https://dashscope-intl.aliyuncs.com/compatible-mode/v1</code>。
+          </p>
+        ) : null}
         {!provider.supportsTranscribe ? (
           <p className="text-xs text-amber-700">该厂商预设仅支持文本翻译；语音转写可改用 OpenAI、Grok 或兼容的自定义接口。</p>
         ) : null}
