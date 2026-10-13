@@ -1,6 +1,8 @@
 node_modules
 .output
 .wxt
+.wrangler
+.dev.vars
 *.local
 *.log
 .DS_Store

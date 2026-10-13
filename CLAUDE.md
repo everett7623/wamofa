@@ -16,6 +16,15 @@ npm run zip              # 打包为 .zip
 npm run compile          # TypeScript 类型检查（tsc --noEmit）
 ```
 
+官网是 `site/` 下的静态页，用 Cloudflare Workers Assets 发布到 `wamofa.com`（不要和扩展的 `npm run build` 混用）：
+
+```bash
+cd site
+npm install
+npm run dev      # 本地预览
+npm run deploy   # 发布并绑定 wamofa.com / www.wamofa.com
+```
+
 - **没有测试框架**。CI（`.github/workflows/ci.yml`）只跑 `npm run compile` + `npm run build`，提交前至少保证这两步通过。
 - 需要验证纯逻辑（如 `src/lib/phone.ts`）时，可把文件拷到临时目录用 `node xxx.mjs` 直接 `import './phone.ts'`（Node ≥ 22 自带类型剥离）。
 - 加载扩展时**必须选择** `.output/chrome-mv3`（生产）或 `.output/chrome-mv3-dev`（开发），不能选仓库根目录。改完代码：`npm run build` → `chrome://extensions` 点重新加载 → 刷新 `web.whatsapp.com`。
@@ -94,7 +103,7 @@ WhatsApp Web 的 DOM 频繁变动，**新版已移除大部分 `data-testid`**�
 
 ## AI 提供商（`src/lib/providers.ts`）
 
-`PROVIDERS` 预设决定 UI 与请求方式：`chatProtocol` 为 `openai-chat` 或 `anthropic-messages`，转写为 `openai-transcriptions` 或 `xai-stt`；`preferredAuthMode: 'projectKey'` 用于 Sub2API 这类自建网关（自定义 header/scheme）。当前预设：OpenAI、Claude、DeepSeek（默认）、Gemini、Grok、Dots AI、Sub2API、自定义 OpenAI 兼容接口。
+`PROVIDERS` 预设决定 UI 与请求方式：`chatProtocol` 为 `openai-chat` 或 `anthropic-messages`，转写为 `openai-transcriptions` 或 `xai-stt`；`preferredAuthMode: 'projectKey'` 用于 Sub2API 这类自建网关（自定义 header/scheme）。当前预设：OpenAI、Claude、DeepSeek（默认）、智谱 GLM、通义千问、Gemini、Grok、Dots AI、Sub2API、自定义 OpenAI 兼容接口。
 
 添加新提供商：在 `PROVIDERS` 增加预设 → 支持语音则 `supportsTranscribe: true` 并填 `transcribePath/transcribeProtocol` → 旧 id/模型名的兼容映射放 `normalizeProviderId()` / `legacyModelMap` → 实际请求在 `src/lib/ai.ts` 里按协议分支，通常不需要改。
 

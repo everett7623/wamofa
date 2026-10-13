@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WAMofa — WhatsApp Web 纯本地助手</title>
+    <meta
+      name="description"
+      content="WAMofa 是 WhatsApp Web 浏览器扩展：AI 翻译、客户备注与标签、快捷回复、语音转写。数据只存在本机，开源，不群发。"
+    />
+    <link rel="canonical" href="https://wamofa.com/" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#078b70" />
+    <meta property="og:title" content="WAMofa" />
+    <meta
+      property="og:description"
+      content="WhatsApp Web 的纯本地助手。翻译、备注、快捷回复、语音转写。不群发，不代替发送。"
+    />
+    <meta property="og:url" content="https://wamofa.com/" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href="/">
+          <img src="/favicon.svg" alt="" width="32" height="32" />
+          WAMofa
+        </a>
+        <nav class="nav" aria-label="页面导航">
+          <a href="#features">功能</a>
+          <a href="#wont">不做的事</a>
+          <a href="#install">安装</a>
+          <a href="/privacy">隐私</a>
+          <a href="https://github.com/everett7623/wamofa">源码</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="hero">
+        <p class="kicker">WhatsApp Web 工作台</p>
+        <h1>翻译和备注留在这台浏览器里</h1>
+        <p class="lede">
+          WAMofa 给 WhatsApp Web 加上 AI 翻译、客户档案、快捷回复和语音转写。
+          没有云端账号，不群发，也不会替你按下发送。
+        </p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#install">自行加载扩展</a>
+          <a class="btn btn-ghost" href="https://github.com/everett7623/wamofa">查看源码</a>
+        </div>
+        <p class="note">独立开源项目，与 WhatsApp 官方无关联。MIT 许可。</p>
+      </section>
+
+      <section id="features">
+        <h2>它做什么</h2>
+        <div class="features">
+          <article>
+            <h3>来消息翻译</h3>
+            <p>在气泡旁点一下翻译，或按联系人打开自动翻译。译文缓存在本机，大约保留 7 天。</p>
+          </article>
+          <article>
+            <h3>智能译出</h3>
+            <p>把输入框里的话译成对方语言，先预览再写回输入框。你自己按 Enter 发送。</p>
+          </article>
+          <article>
+            <h3>客户档案</h3>
+            <p>备注、标签、发出语言都存在本机。能解析到号码时，显示国家、时区和是否在工作时间。</p>
+          </article>
+          <article>
+            <h3>快捷回复</h3>
+            <p>预设话术，会话里用 <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> 插入输入框。</p>
+          </article>
+          <article>
+            <h3>语音转写</h3>
+            <p>把语音消息交给你自己配置的转写接口（例如 Whisper），结果可以再翻译。</p>
+          </article>
+          <article>
+            <h3>快速开聊</h3>
+            <p>
+              输入完整国际号码（以 <code>+</code> 或 <code>00</code> 开头），跳转官方
+              <code>web.whatsapp.com/send</code> 链接，不写入通讯录。
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="wont">
+        <h2>明确不做</h2>
+        <div class="wont">
+          <p>这些能力故意没有，也不会加。</p>
+          <ul>
+            <li>群发、定时发送、自动回复</li>
+            <li>查号、导出群成员、备份或同步对话</li>
+            <li>把号码或聊天内容上传到 WAMofa 自己的服务器（这个站点也不收集）</li>
+            <li>修改 WhatsApp 的发送逻辑，或代替你点击发送</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="install" class="steps">
+        <h2>安装</h2>
+        <p class="note" style="margin-bottom: 16px">
+          目前需要从源码加载，尚未上架 Chrome 网上应用店。需要 Node.js 20+，Chrome 或 Firefox。
+        </p>
+        <ol>
+          <li>
+            <div>
+              <p>克隆仓库并构建：</p>
+              <p>
+                <code>git clone https://github.com/everett7623/wamofa.git</code><br />
+                <code>cd wamofa</code> · <code>npm install</code> · <code>npm run build</code>
+              </p>
+            </div>
+          </li>
+          <li>
+            <div>
+              <p>
+                Chrome 打开 <code>chrome://extensions</code>，打开开发者模式，加载
+                <code>.output/chrome-mv3</code>（不要选仓库根目录）。
+              </p>
+            </div>
+          </li>
+          <li>
+            <div>
+              <p>
+                打开扩展选项页，填入你自己的 AI 服务商与 API Key。支持 OpenAI、Claude、DeepSeek、智谱
+                GLM、通义千问、Gemini、Grok、Sub2API 以及自定义 OpenAI 兼容接口。
+              </p>
+            </div>
+          </li>
+        </ol>
+        <p class="note" style="margin-top: 16px">
+          改代码后：重新加载扩展，再刷新 <code>web.whatsapp.com</code>。快捷键一律是
+          <kbd>Alt</kbd>+<kbd>Shift</kbd> 加字母：R 回复、I 档案、T 译出、H 隐藏译文。
+        </p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <p>WAMofa · 与 WhatsApp 无关联 · <a href="/privacy">隐私政策</a></p>
+        <div class="footer-links">
+          <a href="https://github.com/everett7623/wamofa">GitHub</a>
+          <a href="https://github.com/everett7623/wamofa/issues">反馈</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

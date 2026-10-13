@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://wamofa.com/sitemap.xml

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>隐私政策 — WAMofa</title>
+    <meta
+      name="description"
+      content="WAMofa 隐私政策：数据只存在本机浏览器，API Key 只发给你配置的 AI 服务商，本站点不收集个人信息。"
+    />
+    <link rel="canonical" href="https://wamofa.com/privacy" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#078b70" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href="/">
+          <img src="/favicon.svg" alt="" width="32" height="32" />
+          WAMofa
+        </a>
+        <nav class="nav" aria-label="页面导航">
+          <a href="/#features">功能</a>
+          <a href="/#install">安装</a>
+          <a href="/privacy" aria-current="page">隐私</a>
+          <a href="https://github.com/everett7623/wamofa">源码</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap prose">
+      <p class="kicker">Privacy</p>
+      <h1>隐私政策</h1>
+      <p class="meta">最近更新：2026 年 9 月 20 日。本页同时提供英文，供 Chrome 网上应用店审核使用。</p>
+
+      <p>
+        WAMofa 是安装在你浏览器里的扩展，官方站点是
+        <a href="https://wamofa.com">wamofa.com</a>。
+        我们没有用户账号，也没有用于接收你聊天内容的云端服务。
+      </p>
+
+      <h2>这个网站收集什么</h2>
+      <p>不收集。官网是静态页面，没有账号、没有 Cookie、没有分析脚本、没有表单回传。</p>
+
+      <h2>扩展把数据放在哪里</h2>
+      <p>
+        备注、标签、快捷回复、AI 设置（含 API Key / Project Key）、会话级选项，以及翻译缓存，都写在本机
+        <code>chrome.storage.local</code>。换浏览器或清站点数据就会丢失，这是产品设计，不是缺陷。
+      </p>
+      <ul>
+        <li>主配置键 <code>wamofa</code>：设置、模板、标签、会话元数据。</li>
+        <li>翻译缓存键 <code>wamofa_tx</code>：约 7 天过期，最多约 500 条。</li>
+        <li>
+          会话身份优先用 <code>phone:号码</code>，解析不到号码时用 <code>title:标题</code>。
+          若你手动填写了号码，该号码会作为本地会话键和档案字段保存，不会上传到 WAMofa。
+        </li>
+        <li>页面脚本拿不到完整密钥，只能看到「是否已配置」；密钥只在扩展后台脚本里用于发请求。</li>
+      </ul>
+
+      <h2>什么会离开这台电脑</h2>
+      <p>
+        只有你主动使用翻译或语音转写时，相关文本或音频才会发往<strong>你自己填写的 AI 服务商</strong>
+        （例如 OpenAI、Anthropic、DeepSeek、智谱、通义、Gemini、xAI，或自定义 OpenAI 兼容地址）。
+        请求使用你自己的密钥。WAMofa 作者看不到这些请求。
+      </p>
+      <p>
+        「快速开聊」只会打开 WhatsApp 官方链接
+        <code>https://web.whatsapp.com/send?phone=…</code>，由 WhatsApp 处理。
+      </p>
+
+      <h2>权限为什么要这些</h2>
+      <ul>
+        <li><code>storage</code>：读写上面的本地配置和缓存。</li>
+        <li><code>https://web.whatsapp.com/*</code>：在 WhatsApp Web 页面注入翻译、档案和快捷回复界面。</li>
+        <li>
+          <code>https://*/*</code> 以及本机地址：因为 Base URL 由你指定，扩展需要能访问你配置的任意 AI 接口。
+          扩展不会用这个权限去扫描其他网站。
+        </li>
+      </ul>
+
+      <h2>我们不做什么</h2>
+      <ul>
+        <li>不把聊天记录、通讯录或号码同步到 WAMofa 服务器（没有这样的服务器）。</li>
+        <li>不提供云备份、数据导出到第三方、群发或自动回复。</li>
+        <li>本站点与扩展均不嵌入广告或追踪像素。</li>
+      </ul>
+
+      <h2>如何删除数据</h2>
+      <p>
+        卸载扩展，或在浏览器中清除该扩展的本地存储。翻译缓存也会随 TTL 自动过期。
+        第三方 AI 服务商各自有自己的数据处理政策，需要到对应厂商处查看。
+      </p>
+
+      <h2>联系</h2>
+      <p>
+        问题与隐私相关请求请开
+        <a href="https://github.com/everett7623/wamofa/issues">GitHub Issues</a>。
+        源码：<a href="https://github.com/everett7623/wamofa">github.com/everett7623/wamofa</a>。
+      </p>
+
+      <div class="en" lang="en">
+        <h2>English</h2>
+        <p class="meta">Last updated: 20 September 2026.</p>
+        <p>
+          WAMofa is a browser extension for WhatsApp Web. The project website is
+          <a href="https://wamofa.com">wamofa.com</a>. There are no user accounts and no WAMofa backend
+          that receives your chats.
+        </p>
+        <p>
+          This website is static. It does not set cookies, run analytics, or collect personal information.
+        </p>
+        <p>
+          Inside the extension, notes, tags, templates, AI credentials, per-chat settings, and translation
+          cache live in <code>chrome.storage.local</code> on your device. Translation cache expires after
+          about 7 days and is capped at about 500 entries. Chat records may be keyed locally by a phone
+          number when one can be parsed, or by the chat title otherwise. A number you type in manually is
+          stored only on this device.
+        </p>
+        <p>
+          API keys are readable only by the extension’s background script. The content script on WhatsApp
+          Web receives a public state object without the raw keys.
+        </p>
+        <p>
+          Text or audio leaves your computer only when you translate or transcribe, and only to the AI
+          provider URL you configured, using your own key. “Open chat” uses WhatsApp’s official
+          <code>web.whatsapp.com/send</code> URL.
+        </p>
+        <p>
+          Host permission <code>https://*/*</code> exists so the extension can call whatever OpenAI-compatible
+          endpoint you enter. It is not used to scrape other sites. Uninstall the extension or clear its
+          local storage to delete data held by WAMofa. Third-party AI providers have their own policies.
+        </p>
+        <p>
+          Contact: <a href="https://github.com/everett7623/wamofa/issues">GitHub Issues</a>.
+        </p>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <p>WAMofa · 与 WhatsApp 无关联 · <a href="/privacy">隐私政策</a></p>
+        <div class="footer-links">
+          <a href="https://github.com/everett7623/wamofa">GitHub</a>
+          <a href="https://github.com/everett7623/wamofa/issues">反馈</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
