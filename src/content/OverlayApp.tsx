@@ -6,6 +6,7 @@ import { QuickReplyPanel } from '~/content/QuickReplyPanel';
 import { RightRail, type RailPanel } from '~/content/RightRail';
 import { setRuntimeChatId } from '~/content/runtime';
 import { registerShortcut, unregisterShortcut, type ShortcutHandler } from '~/content/shortcuts';
+import { isExtensionAlive } from '~/lib/extension-context';
 import { sendExtension } from '~/lib/messaging';
 import { langLabel } from '~/lib/langs';
 import { parsePhoneFromChatId, parseTitleFromChatId, resolveChatLookup } from '~/lib/chat-keys';
@@ -49,7 +50,13 @@ export function OverlayApp({ state, onState }: Props) {
   const chatIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    let timer = 0;
     const tick = () => {
+      if (!isExtensionAlive()) {
+        window.clearInterval(timer);
+        window.removeEventListener('resize', tick);
+        return;
+      }
       const id = getActiveChatId();
       const nextTitle = getHeaderTitle();
       const prev = chatIdRef.current;
@@ -75,10 +82,10 @@ export function OverlayApp({ state, onState }: Props) {
         return;
       }
     };
-    tick();
-
-    const timer = window.setInterval(tick, 1500);
+    // 先注册再同步执行一次：挂载即失效时 tick 里的 clearInterval 才有目标可清
+    timer = window.setInterval(tick, 1500);
     window.addEventListener('resize', tick);
+    tick();
 
     return () => {
       window.clearInterval(timer);

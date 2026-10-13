@@ -6,16 +6,81 @@ import { bindHeaderInsights } from '~/content/header-insights';
 import { bindScanObserver, runScan, scheduleScan } from '~/content/scan';
 import { injectPageStyles } from '~/content/page-styles';
 import { setRuntimeChatId, setRuntimeState } from '~/content/runtime';
+import { isContextInvalidatedError, isExtensionAlive } from '~/lib/extension-context';
 import { sendExtension } from '~/lib/messaging';
 import type { PublicState } from '~/lib/types';
 import { getActiveChatId, waitForApp } from '~/wa/dom';
+import { ContentScriptContext } from 'wxt/utils/content-script-context';
+
+function patchWxtInvalidContextDetection(): void {
+  const proto = ContentScriptContext.prototype;
+  const desc = Object.getOwnPropertyDescriptor(proto, 'isInvalid');
+  if (!desc?.get) return;
+  const original = desc.get;
+  Object.defineProperty(proto, 'isInvalid', {
+    configurable: true,
+    enumerable: desc.enumerable,
+    get() {
+      try {
+        return original.call(this);
+      } catch (err) {
+        if (!isContextInvalidatedError(err)) throw err;
+        try {
+          this.notifyInvalidated();
+        } catch {
+          try {
+            this.abort('Extension context invalidated');
+          } catch {
+            // already aborted
+          }
+        }
+        return true;
+      }
+    },
+  });
+}
+
+function bindInvalidatedContextGuard(ctx: ContentScriptContext): void {
+  patchWxtInvalidContextDetection();
+  let stopping = false;
+  const stop = () => {
+    if (stopping) return;
+    stopping = true;
+    try {
+      ctx.abort('Extension context invalidated');
+    } catch {
+      // already aborted
+    }
+  };
+
+  window.addEventListener(
+    'error',
+    (event) => {
+      if (!isContextInvalidatedError(event.error ?? event.message)) return;
+      event.preventDefault();
+      stop();
+    },
+    true,
+  );
+  window.addEventListener('unhandledrejection', (event) => {
+    if (!isContextInvalidatedError(event.reason)) return;
+    event.preventDefault();
+    stop();
+  });
+}
 
 export default defineContentScript({
   matches: ['https://web.whatsapp.com/*'],
   runAt: 'document_idle',
   cssInjectionMode: 'ui',
   async main(ctx) {
-    await waitForApp(() => ctx.isInvalid);
+    bindInvalidatedContextGuard(ctx);
+    try {
+      await waitForApp(() => ctx.isInvalid);
+    } catch {
+      return;
+    }
+    if (ctx.isInvalid) return;
     injectPageStyles(ctx);
 
     let state: PublicState | null = null;
@@ -36,6 +101,7 @@ export default defineContentScript({
     };
 
     const refresh = async () => {
+      if (!isExtensionAlive()) return;
       const res = await sendExtension({ type: 'WAMOFA_GET_STATE' });
       if (res.ok && 'state' in res) applyState(res.state);
     };
@@ -61,11 +127,16 @@ export default defineContentScript({
       changes: Record<string, Browser.storage.StorageChange>,
       areaName: string,
     ) => {
+      if (!isExtensionAlive()) return;
       if (areaName === 'local' && changes.wamofa) void refresh();
     };
     browser.storage.onChanged.addListener(handleStorageChange);
     ctx.onInvalidated(() => {
-      browser.storage.onChanged.removeListener(handleStorageChange);
+      try {
+        browser.storage.onChanged.removeListener(handleStorageChange);
+      } catch {
+        // extension context already gone
+      }
     });
 
     const ui = await createShadowRootUi(ctx, {

@@ -725,6 +725,10 @@ export default function App() {
         <a className="text-brand" href="https://wamofa.com" target="_blank" rel="noreferrer">
           wamofa.com
         </a>
+        {' · '}
+        <a className="text-brand" href="https://wamofa.com/privacy" target="_blank" rel="noreferrer">
+          隐私政策
+        </a>
       </p>
       </main>
     </div>

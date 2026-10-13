@@ -1,5 +1,12 @@
 # 更新日志
 
+## [0.2.22] - 2026-09-20
+
+### 🐛 Bug 修复
+- **扩展重载后 WhatsApp 页报 `Extension context invalidated`**：在 `chrome://extensions` 点重新加载后，旧 content script 仍挂在已打开的 WhatsApp 标签页里。WXT 的 `ctx.isInvalid` 只在被读取时才检查 `chrome.runtime.id`（自身不做后台轮询），此时 Chrome 会直接抛错而不是返回空，于是 `notifyInvalidated` 跑不到、定时器停不掉，错误面板把堆栈归到打包后的 React 行。现改为捕获该类错误并立刻 abort 旧脚本；`sendMessage` / 扫描 / 轮询在上下文已失效时不再调用 Chrome API，OverlayApp 轮询失效时同步清掉 interval 与 resize 监听。重载扩展后仍需刷新 `web.whatsapp.com` 才会注入新脚本
+
+---
+
 ## [0.2.21] - 2026-09-20
 
 ### ✨ 功能

@@ -1,3 +1,8 @@
+import {
+  CONTEXT_INVALIDATED_ERROR,
+  isContextInvalidatedError,
+  isExtensionAlive,
+} from '~/lib/extension-context';
 import type { AppState, ChatMeta, PublicState, QuickReply } from '~/lib/types';
 
 export type ExtensionRequest =
@@ -25,8 +30,22 @@ export type Fail = { ok: false; error: string };
 
 export type ExtensionResponse = OkText | OkPublic | OkPrivate | OkModels | Fail;
 
+function invalidatedResult<T extends ExtensionResponse>(): T {
+  return { ok: false, error: CONTEXT_INVALIDATED_ERROR } as T;
+}
+
 export function sendExtension<T extends ExtensionResponse>(
   message: ExtensionRequest,
 ): Promise<T> {
-  return browser.runtime.sendMessage(message) as Promise<T>;
+  if (!isExtensionAlive()) return Promise.resolve(invalidatedResult<T>());
+
+  try {
+    return (browser.runtime.sendMessage(message) as Promise<T>).catch((err: unknown) => {
+      if (isContextInvalidatedError(err)) return invalidatedResult<T>();
+      throw err;
+    });
+  } catch (err) {
+    if (isContextInvalidatedError(err)) return Promise.resolve(invalidatedResult<T>());
+    throw err;
+  }
 }

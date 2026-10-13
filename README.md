@@ -2,7 +2,7 @@
 
 WhatsApp Web 工作台助手：AI 翻译、客户备注标签、快捷回复、语音转写。纯本地存储，开源，不群发。
 
-官网：[wamofa.com](https://wamofa.com) · 源码：[github.com/everett7623/wamofa](https://github.com/everett7623/wamofa)
+官网：[wamofa.com](https://wamofa.com) · 隐私政策：[wamofa.com/privacy](https://wamofa.com/privacy) · 源码：[github.com/everett7623/wamofa](https://github.com/everett7623/wamofa)
 
 WAMofa 是独立项目，与 WhatsApp 官方无关联。
 
@@ -93,6 +93,8 @@ npm run build
 ---
 
 ## 🔒 隐私
+
+完整说明见 [wamofa.com/privacy](https://wamofa.com/privacy)。
 
 - 备注、标签、模板、翻译历史均存 `chrome.storage.local`
 - API Key 仅在 Background 可读

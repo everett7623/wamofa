@@ -2,6 +2,7 @@ import { enhanceChatList } from '~/content/chat-list';
 import { enhanceHeaderInsights } from '~/content/header-insights';
 import { enhanceMessages } from '~/content/messages';
 import { getRuntimeState } from '~/content/runtime';
+import { isExtensionAlive } from '~/lib/extension-context';
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 
 let timer: number | null = null;
@@ -18,6 +19,7 @@ export function scheduleScan(delayMs = 120): void {
 
 export function runScan(): void {
   raf = null;
+  if (!isExtensionAlive()) return;
   const state = getRuntimeState();
   if (!state) return;
   enhanceMessages(state);

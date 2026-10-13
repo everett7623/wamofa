@@ -619,8 +619,15 @@ export function isDarkTheme(): boolean {
 export async function waitForApp(isAborted?: () => boolean): Promise<void> {
   if (first('#app')) return;
   await new Promise<void>((resolve, reject) => {
+    const aborted = () => {
+      try {
+        return Boolean(isAborted?.());
+      } catch {
+        return true;
+      }
+    };
     const timer = window.setInterval(() => {
-      if (isAborted?.()) {
+      if (aborted()) {
         window.clearInterval(timer);
         reject(new Error('aborted'));
         return;
