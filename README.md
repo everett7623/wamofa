@@ -105,12 +105,25 @@ npm run build
 ## 🛠️ 开发
 
 ```bash
-npm run dev          # Chrome 开发
-npm run build        # 生产构建
+npm run dev          # Chrome 开发 → dist/chrome-mv3-dev
+npm run build        # 生产构建 → dist/chrome-mv3
+npm run zip          # 打包 → dist/wamofa-<version>-chrome.zip
 npm run compile      # 类型检查
 ```
 
-详见仓库内 `CLAUDE.md`。
+加载扩展时选择 `dist/chrome-mv3`（或开发目录），不要选仓库根目录。
+
+```
+src/entrypoints  扩展入口
+src/content      WhatsApp 页内逻辑
+src/wa           DOM 适配
+src/lib          存储 / AI / 消息
+src/components   共用 UI
+site/            官网
+docs/            补充说明
+```
+
+架构与发版约定见 `CLAUDE.md`。Sub2API 网关见 [`docs/sub2api.md`](docs/sub2api.md)。
 
 ---
 

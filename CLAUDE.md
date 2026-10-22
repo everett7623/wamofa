@@ -38,7 +38,22 @@ npm run deploy   # 发布并绑定 wamofa.com / www.wamofa.com
 3. `wxt.config.ts` 的 `manifest.version`
 4. `CHANGELOG.md` 顶部新增条目，沿用现有分节：`⚠️ 使用变化` / `✨ 功能` / `🐛 Bug 修复` / `🐛 数据安全`，写清「现象 → 根因」
 
-版本号语义：修 Bug 升修订号，新功能升次版本。根目录的 `版本号管理规范.md`、`发布总结.md` 等多份 `.md` 是早期人工记录，其中提到的 `src/lib/import-export.ts` 已不存在，以本文件为准。
+版本号语义：修 Bug 升修订号，新功能升次版本。以本文件与 `CHANGELOG.md` 为准。
+
+## 目录结构
+
+```
+src/
+  entrypoints/   background / popup / options / content 入口
+  components/    扩展页共用组件
+  content/       WhatsApp 页内面板与扫描
+  wa/            WhatsApp DOM 适配
+  lib/           存储、消息、AI、号码等纯逻辑
+  assets/        图标与全局样式
+site/            官网静态页（独立 npm，Cloudflare Workers Assets）
+docs/            补充说明（如 Sub2API）
+dist/            构建产物（gitignore）：chrome-mv3、zip
+```
 
 ## 架构要点
 
