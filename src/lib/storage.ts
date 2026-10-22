@@ -54,8 +54,16 @@ function resolveTemplates(parsed: Partial<AppState>): QuickReply[] {
   return parsed.templates;
 }
 
-async function persistTemplateMigrationIfNeeded(rawTemplates: QuickReply[] | undefined): Promise<void> {
-  // getState 在每次翻译请求都会被调用，迁移只需确认一次。
+async function readStoredState(): Promise<AppState> {
+  const result = await browser.storage.local.get(KEY);
+  return mergeState(result[KEY]);
+}
+
+/**
+ * 旧版中文默认话术只迁一次。必须走 writeChain：此前这次写入
+ * 不排队，会和正在保存的备注用两份快照互相覆盖。
+ */
+async function migrateLegacyTemplates(): Promise<void> {
   if (templateMigrationDone) return;
   try {
     const flag = await browser.storage.local.get(TEMPLATES_MIGRATED_FLAG);
@@ -63,21 +71,43 @@ async function persistTemplateMigrationIfNeeded(rawTemplates: QuickReply[] | und
       templateMigrationDone = true;
       return;
     }
-    if (!rawTemplates || !isLegacyZhTemplates(rawTemplates)) {
+    const result = await browser.storage.local.get(KEY);
+    const raw = result[KEY] as Partial<AppState> | undefined;
+    if (!raw?.templates || !isLegacyZhTemplates(raw.templates)) {
       await browser.storage.local.set({ [TEMPLATES_MIGRATED_FLAG]: true });
       templateMigrationDone = true;
       return;
     }
-    const result = await browser.storage.local.get(KEY);
-    const current = mergeState(result[KEY]);
+    const current = mergeState(raw);
     await browser.storage.local.set({
       [KEY]: { ...current, templates: DEFAULT_TEMPLATES },
       [TEMPLATES_MIGRATED_FLAG]: true,
     });
     templateMigrationDone = true;
   } catch {
-    // 忽略一次性迁移失败，下次 getState 再试
+    // 忽略一次性迁移失败，下次再试
   }
+}
+
+function enqueue<T>(task: () => Promise<T>): Promise<T> {
+  const run = writeChain.then(task, task);
+  writeChain = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
+let migrationQueue: Promise<void> | null = null;
+
+function ensureMigration(): Promise<void> {
+  if (templateMigrationDone) return Promise.resolve();
+  if (!migrationQueue) {
+    migrationQueue = enqueue(() => migrateLegacyTemplates()).finally(() => {
+      migrationQueue = null;
+    });
+  }
+  return migrationQueue;
 }
 
 function mergeState(raw: unknown): AppState {
@@ -135,11 +165,8 @@ function mergeState(raw: unknown): AppState {
 }
 
 export async function getState(): Promise<AppState> {
-  const result = await browser.storage.local.get(KEY);
-  const raw = result[KEY] as Partial<AppState> | undefined;
-  const state = mergeState(raw);
-  void persistTemplateMigrationIfNeeded(raw?.templates);
-  return state;
+  await ensureMigration();
+  return readStoredState();
 }
 
 export async function setState(next: AppState): Promise<AppState> {
@@ -148,19 +175,14 @@ export async function setState(next: AppState): Promise<AppState> {
 }
 
 /** Serialize all read-modify-write storage updates to avoid lost races. */
-export async function patchState(
+export function patchState(
   patcher: (current: AppState) => AppState,
 ): Promise<AppState> {
-  const run = writeChain.then(async () => {
-    const current = await getState();
-    const next = patcher(current);
-    return setState(next);
+  return enqueue(async () => {
+    await migrateLegacyTemplates();
+    const current = await readStoredState();
+    return setState(patcher(current));
   });
-  writeChain = run.then(
-    () => undefined,
-    () => undefined,
-  );
-  return run;
 }
 
 export function toPublicState(state: AppState): PublicState {

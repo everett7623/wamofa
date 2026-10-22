@@ -1,5 +1,6 @@
 import { listModels, testConnection, transcribeAudio, translateText } from '~/lib/ai';
 import type { ExtensionRequest, ExtensionResponse } from '~/lib/messaging';
+import { checkForUpdate } from '~/lib/update';
 import {
   getState,
   patchState,
@@ -108,6 +109,8 @@ async function handle(
       const text = await testConnection(settings);
       return { ok: true, text };
     }
+    case 'WAMOFA_CHECK_UPDATE':
+      return { ok: true, update: await checkForUpdate(Boolean(message.force)) };
     default:
       return { ok: false, error: '未知请求' };
   }

@@ -93,6 +93,10 @@ input:focus-visible {
   box-shadow: 0 0 0 4px rgba(36, 183, 137, 0.12);
 }
 
+.popup-shell .version-center {
+  margin-top: 14px;
+}
+
 .connection-card {
   display: flex;
   align-items: center;

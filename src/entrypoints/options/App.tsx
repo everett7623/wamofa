@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import VersionCenter from '~/components/VersionCenter';
 import { LANGUAGES } from '~/lib/langs';
 import { sendExtension } from '~/lib/messaging';
 import {
@@ -184,9 +185,12 @@ export default function App() {
           <a href="#replies"><span>03</span>快捷回复</a>
           <a href="#tags"><span>04</span>客户标签</a>
         </nav>
-        <div className="settings-local-note">
-          <i aria-hidden="true" />
-          <div><strong>本机私密存储</strong><small>备注、标签、话术与 Key 均只存在当前浏览器，不上传云端</small></div>
+        <div className="settings-side-foot">
+          <VersionCenter />
+          <div className="settings-local-note">
+            <i aria-hidden="true" />
+            <div><strong>本机私密存储</strong><small>备注、标签、话术与 Key 均只存在当前浏览器，不上传云端</small></div>
+          </div>
         </div>
       </aside>
 

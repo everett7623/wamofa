@@ -64,7 +64,7 @@ npm install
 npm run build
 ```
 
-**Chrome**: `chrome://extensions` → 开发者模式 → 加载 **`.output/chrome-mv3`**（不是仓库根目录）
+**Chrome**: `chrome://extensions` → 开发者模式 → 加载 **`dist/chrome-mv3`**（不是仓库根目录）
 
 修改代码后：重新加载扩展 → 刷新 WhatsApp Web 标签页。
 

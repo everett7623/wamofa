@@ -9,9 +9,9 @@ WAMofa 是 WhatsApp Web 浏览器扩展（WXT + React 19 + Tailwind 4，支持 C
 ## 开发命令
 
 ```bash
-npm run dev              # 开发模式（Chrome），输出到 .output/chrome-mv3-dev
+npm run dev              # 开发模式（Chrome），输出到 dist/chrome-mv3-dev
 npm run dev:firefox      # Firefox 开发模式
-npm run build            # 生产构建，输出到 .output/chrome-mv3
+npm run build            # 生产构建，输出到 dist/chrome-mv3
 npm run zip              # 打包为 .zip
 npm run compile          # TypeScript 类型检查（tsc --noEmit）
 ```
@@ -27,7 +27,7 @@ npm run deploy   # 发布并绑定 wamofa.com / www.wamofa.com
 
 - **没有测试框架**。CI（`.github/workflows/ci.yml`）只跑 `npm run compile` + `npm run build`，提交前至少保证这两步通过。
 - 需要验证纯逻辑（如 `src/lib/phone.ts`）时，可把文件拷到临时目录用 `node xxx.mjs` 直接 `import './phone.ts'`（Node ≥ 22 自带类型剥离）。
-- 加载扩展时**必须选择** `.output/chrome-mv3`（生产）或 `.output/chrome-mv3-dev`（开发），不能选仓库根目录。改完代码：`npm run build` → `chrome://extensions` 点重新加载 → 刷新 `web.whatsapp.com`。
+- 加载扩展时**必须选择** `dist/chrome-mv3`（生产）或 `dist/chrome-mv3-dev`（开发），不能选仓库根目录。改完代码：`npm run build` → `chrome://extensions` 点重新加载 → 刷新 `web.whatsapp.com`。
 
 ## 发版约定
 
@@ -126,4 +126,4 @@ WhatsApp Web 的 DOM 频繁变动，**新版已移除大部分 `data-testid`**�
 - Content script 日志：在 WhatsApp Web 页面打开 DevTools
 - Background 日志：`chrome://extensions` → WAMofa 详情 → **Service Worker**
 - Storage 内容：DevTools → Application → Local Storage → `chrome-extension://...`，主键 `wamofa`，翻译缓存 `wamofa_tx`
-- 脱离扩展环境预览 popup：给页面注入 `globalThis.chrome = { runtime: { sendMessage: async () => ({ ok: true, state: {...} }) }, tabs: {...} }` 的 mock 后用静态服务器打开 `.output/chrome-mv3/popup.html`
+- 脱离扩展环境预览 popup：给页面注入 `globalThis.chrome = { runtime: { sendMessage: async () => ({ ok: true, state: {...} }) }, tabs: {...} }` 的 mock 后用静态服务器打开 `dist/chrome-mv3/popup.html`

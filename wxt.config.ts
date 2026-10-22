@@ -3,6 +3,7 @@ import { defineConfig } from 'wxt';
 
 export default defineConfig({
   srcDir: 'src',
+  outDir: 'dist',
   modules: ['@wxt-dev/module-react', '@wxt-dev/auto-icons'],
   autoIcons: {
     baseIconPath: 'assets/icon.svg',
@@ -15,7 +16,7 @@ export default defineConfig({
     name: 'WAMofa',
     description:
       'WhatsApp Web 助手：AI 翻译、客户备注标签、快捷回复、语音转写。本地存储，不群发。',
-    version: '0.2.22',
+    version: '0.3.0',
     homepage_url: 'https://wamofa.com',
     permissions: ['storage'],
     host_permissions: [

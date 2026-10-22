@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import VersionCenter from '~/components/VersionCenter';
 import { sendExtension } from '~/lib/messaging';
 import { buildOpenChatRequest, phoneExample, phoneFormatHint } from '~/lib/phone';
 import { getProvider } from '~/lib/providers';
@@ -58,6 +59,7 @@ export default function App() {
         </div>
         <span className={`popup-status-dot ${state?.settings.hasKey ? 'is-ready' : ''}`} title={state?.settings.hasKey ? 'AI 已配置' : 'AI 未配置'} />
       </header>
+      <VersionCenter />
 
       <section className={`connection-card ${state?.settings.hasKey ? 'is-ready' : ''}`}>
         <span className="connection-icon">AI</span>

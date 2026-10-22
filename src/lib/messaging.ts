@@ -3,6 +3,7 @@ import {
   isContextInvalidatedError,
   isExtensionAlive,
 } from '~/lib/extension-context';
+import type { UpdateSnapshot } from '~/lib/update';
 import type { AppState, ChatMeta, PublicState, QuickReply } from '~/lib/types';
 
 export type ExtensionRequest =
@@ -20,15 +21,17 @@ export type ExtensionRequest =
   | { type: 'WAMOFA_TRANSLATE'; text: string; targetLang: string }
   | { type: 'WAMOFA_TRANSCRIBE'; mime: string; dataBase64: string; fileName?: string }
   | { type: 'WAMOFA_LIST_MODELS' }
-  | { type: 'WAMOFA_TEST' };
+  | { type: 'WAMOFA_TEST' }
+  | { type: 'WAMOFA_CHECK_UPDATE'; force?: boolean };
 
 export type OkText = { ok: true; text: string };
 export type OkPublic = { ok: true; state: PublicState };
 export type OkPrivate = { ok: true; privateState: AppState };
 export type OkModels = { ok: true; models: string[] };
+export type OkUpdate = { ok: true; update: UpdateSnapshot };
 export type Fail = { ok: false; error: string };
 
-export type ExtensionResponse = OkText | OkPublic | OkPrivate | OkModels | Fail;
+export type ExtensionResponse = OkText | OkPublic | OkPrivate | OkModels | OkUpdate | Fail;
 
 function invalidatedResult<T extends ExtensionResponse>(): T {
   return { ok: false, error: CONTEXT_INVALIDATED_ERROR } as T;
