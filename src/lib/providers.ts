@@ -201,6 +201,23 @@ export const PROVIDERS: ProviderPreset[] = [
     modelOptions: ['dots3-note-prev'],
   },
   {
+    id: 'minimax',
+    name: 'MiniMax',
+    baseUrl: 'https://api.minimax.cn/anthropic',
+    model: 'MiniMax-M3',
+    chatProtocol: 'anthropic-messages',
+    chatPath: 'v1/messages',
+    modelsPath: 'v1/models',
+    transcribeModel: '',
+    supportsTranscribe: false,
+    hint: 'MiniMax 官方推荐 Anthropic Messages 兼容接口；鉴权用 Authorization Bearer。默认国内 api.minimax.cn；国际站可改 Base URL 为 https://api.minimax.io/anthropic。高频翻译建议 M3（默认不开 thinking）；M3.1-Flash 会强制 thinking，更慢更耗 token。',
+    preferredAuthMode: 'apiKey',
+    configurableBaseUrl: true,
+    apiKeyHeader: 'Authorization',
+    apiKeyScheme: 'bearer',
+    modelOptions: ['MiniMax-M3', 'MiniMax-M3.1-Flash'],
+  },
+  {
     id: 'sub2api',
     name: 'Sub2API（自建网关）',
     baseUrl: '',
@@ -261,12 +278,39 @@ export const PROVIDERS: ProviderPreset[] = [
     ],
     transcribeModelOptions: ['gpt-4o-mini-transcribe', 'gpt-4o-transcribe', 'whisper-1'],
   },
+  {
+    id: 'custom-anthropic',
+    name: '其他 Anthropic 兼容接口（高级）',
+    baseUrl: '',
+    model: '',
+    chatProtocol: 'anthropic-messages',
+    chatPath: 'v1/messages',
+    modelsPath: 'v1/models',
+    transcribeModel: '',
+    supportsTranscribe: false,
+    hint: '填写 Anthropic Messages 兼容的 Base URL（如官方 https://api.anthropic.com，或网关的 /anthropic）。也可直接填写完整 /v1/messages 地址。官方 Claude 用 x-api-key；部分网关用 Bearer，可在鉴权方式里切换。',
+    preferredAuthMode: 'apiKey',
+    configurableAuth: true,
+    configurableBaseUrl: true,
+    apiKeyHeader: 'x-api-key',
+    apiKeyScheme: 'raw',
+    projectKeyHeader: 'Authorization',
+    projectKeyScheme: 'bearer',
+    modelOptions: [
+      'claude-sonnet-5',
+      'claude-opus-5',
+      'claude-haiku-4-5',
+      'MiniMax-M3',
+      'MiniMax-M3.1-Flash',
+    ],
+  },
 ];
 
 export function normalizeProviderId(id: string): string {
   if (id === 'groq' || id === 'grop') return 'grok';
   if (id === 'zai' || id === 'zhipuai' || id === 'glm' || id === 'bigmodel') return 'zhipu';
   if (id === 'dashscope' || id === 'tongyi') return 'qwen';
+  if (id === 'minimaxi' || id === 'minimax-cn') return 'minimax';
   return id;
 }
 

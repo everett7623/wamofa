@@ -1,5 +1,13 @@
 # 更新日志
 
+## [0.4.0] - 2026-10-22
+
+### ✨ 功能
+- **MiniMax**：选项页新增 MiniMax 预设，走官方推荐的 Anthropic Messages 兼容接口（默认国内 `https://api.minimax.cn/anthropic`，鉴权 `Authorization: Bearer`）。预置 `MiniMax-M3`（默认，适合翻译）与 `MiniMax-M3.1-Flash`；国际站可改 Base URL
+- **其他 Anthropic 兼容接口**：列表末尾新增高级预设，可接官方 Claude 网关或其他 Messages 兼容端点，支持切换 x-api-key / Bearer
+
+---
+
 ## [0.3.0] - 2026-10-22
 
 ### ✨ 功能

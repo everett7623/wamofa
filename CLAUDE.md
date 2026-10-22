@@ -118,7 +118,7 @@ WhatsApp Web 的 DOM 频繁变动，**新版已移除大部分 `data-testid`**�
 
 ## AI 提供商（`src/lib/providers.ts`）
 
-`PROVIDERS` 预设决定 UI 与请求方式：`chatProtocol` 为 `openai-chat` 或 `anthropic-messages`，转写为 `openai-transcriptions` 或 `xai-stt`；`preferredAuthMode: 'projectKey'` 用于 Sub2API 这类自建网关（自定义 header/scheme）。当前预设：OpenAI、Claude、DeepSeek（默认）、智谱 GLM、通义千问、Gemini、Grok、Dots AI、Sub2API、自定义 OpenAI 兼容接口。
+`PROVIDERS` 预设决定 UI 与请求方式：`chatProtocol` 为 `openai-chat` 或 `anthropic-messages`，转写为 `openai-transcriptions` 或 `xai-stt`；`preferredAuthMode: 'projectKey'` 用于 Sub2API 这类自建网关（自定义 header/scheme）。当前预设：OpenAI、Claude、DeepSeek（默认）、智谱 GLM、通义千问、Gemini、Grok、Dots AI、MiniMax、Sub2API、自定义 OpenAI 兼容接口、自定义 Anthropic 兼容接口。
 
 添加新提供商：在 `PROVIDERS` 增加预设 → 支持语音则 `supportsTranscribe: true` 并填 `transcribePath/transcribeProtocol` → 旧 id/模型名的兼容映射放 `normalizeProviderId()` / `legacyModelMap` → 实际请求在 `src/lib/ai.ts` 里按协议分支，通常不需要改。
 
