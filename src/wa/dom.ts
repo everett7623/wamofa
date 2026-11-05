@@ -519,6 +519,25 @@ function hashText(text: string): string {
 
 export function getMessageText(el: HTMLElement): string {
   const row = normalizeBubble(el) ?? el;
+
+  // 消息自己的正文——文字正文、文档/图片的说明文字、以及引用回复里「回复的那段话」——
+  // 都挂在 [data-pre-plain-text] 容器内；被引用的原消息、文档文件名/大小、缩略图都在它之外。
+  // 优先只取容器里的文字：否则引用/附件内容会被一起送去翻译，污染正文，
+  // 遇到引用的是 PDF / 图片这类没有正文的内容时，正文判定还会飘、把按钮卡在「…」。
+  const bodyRoots = [...row.querySelectorAll<HTMLElement>('[data-pre-plain-text]')];
+  if (bodyRoots.length) {
+    const scoped = bodyRoots.flatMap((scope) =>
+      [...scope.querySelectorAll<HTMLElement>(
+        'span.selectable-text.copyable-text, span.selectable-text, .copyable-text span',
+      )]
+        .filter((node) => !isWamofaNode(node))
+        .map((node) => node.textContent?.trim() ?? '')
+        .filter((text) => text && !looksLikeIcon(text) && !looksLikeTimestamp(text)),
+    );
+    if (scoped.length) return bestUniqueText(scoped);
+  }
+
+  // 回退：没有 data-pre-plain-text 的消息（部分系统 / 媒体消息）沿用分层提取。
   // `.copyable-text span` 会一并选中时间戳那个 span，必须和 tier2 用同一套过滤，
   // 否则 bestUniqueText 会把 "11:07" 拼到正文后面一起送去翻译。
   const tier1 = [...row.querySelectorAll<HTMLElement>(

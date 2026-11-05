@@ -255,7 +255,9 @@ async function runTranslate(bubble: HTMLElement, force: boolean): Promise<void> 
     );
   } finally {
     inflight.delete(key);
-    if (isCurrentBubble(bubble, key)) setBusy(bubble, '翻译', false);
+    // 无条件复位，避免正文判定在请求往返间发生漂移导致 isCurrentBubble 为假、
+    // 按钮永远停在「…」。复位的是本气泡自己的翻译按钮，不会误伤别的消息。
+    setBusy(bubble, '翻译', false);
   }
 }
 
@@ -322,7 +324,7 @@ async function runTranscribe(bubble: HTMLElement): Promise<void> {
     );
   } finally {
     inflight.delete(requestKey);
-    if (isCurrentBubble(bubble, key)) setBusy(bubble, '转写', false);
+    setBusy(bubble, '转写', false);
   }
 }
 
