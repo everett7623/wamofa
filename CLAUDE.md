@@ -40,6 +40,12 @@ npm run deploy   # 发布并绑定 wamofa.com / www.wamofa.com
 
 版本号语义：修 Bug 升修订号，新功能升次版本。以本文件与 `CHANGELOG.md` 为准。
 
+上述同步完成、`compile` 与 `build` 通过后，**每次更新都要打包并发布**。扩展不走商店，用户靠 Release 附件安装；扩展内的更新检查读 GitHub `releases/latest`，不发 Release 用户就收不到新版：
+
+1. 本地：`npm run zip`，在 `dist/` 生成 `wamofa-<version>-chrome.zip`（旧版本 zip 保留）
+2. 远程：推送 `main`，再 `gh release create v<version> dist/wamofa-<version>-chrome.zip --target main --title v<version> --notes-file <说明文件>`。正文沿用既有格式：`## <version>` 加几条要点，末尾附「安装：解压或加载 zip 对应扩展包，Chrome 开发者模式加载 dist/chrome-mv3，或直接使用附件 zip。」
+3. `gh release create` 只在远程打 tag，发布后 `git fetch --tags` 同步到本地
+
 ## 目录结构
 
 ```
