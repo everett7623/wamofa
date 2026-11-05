@@ -42,64 +42,74 @@ export const PROVIDERS: ProviderPreset[] = [
     id: 'openai',
     name: 'OpenAI',
     baseUrl: 'https://api.openai.com',
-    model: 'gpt-5.6-luna',
+    model: 'gpt-6-luna',
     chatProtocol: 'openai-chat',
     chatPath: 'v1/chat/completions',
     modelsPath: 'v1/models',
-    transcribeModel: 'gpt-4o-mini-transcribe',
+    transcribeModel: 'gpt-transcribe',
     transcribePath: 'v1/audio/transcriptions',
     transcribeProtocol: 'openai-transcriptions',
     transcribeModelRequired: true,
     supportsTranscribe: true,
-    hint: 'OpenAI 官方接口；文本走 Chat Completions，语音走 Transcriptions。',
+    hint: 'OpenAI 官方接口；文本走 Chat Completions，语音走 Transcriptions。高频翻译建议 GPT-6 Luna（最低成本档）。',
     preferredAuthMode: 'apiKey',
-    modelOptions: [
-      'gpt-5.6-luna',
-      'gpt-5.6-terra',
-      'gpt-5.6-sol',
-      'gpt-4.1',
-      'gpt-4.1-mini',
-      'gpt-4o',
-      'gpt-4o-mini',
-    ],
-    transcribeModelOptions: ['gpt-4o-mini-transcribe', 'gpt-4o-transcribe', 'whisper-1'],
+    modelOptions: ['gpt-6-luna', 'gpt-6.1-terra', 'gpt-6.1-sol', 'gpt-6-astra'],
+    transcribeModelOptions: ['gpt-transcribe'],
+    // 转写模型与文本模型共用这张表（名字不冲突）；GPT-4o / 4.1 与旧转写模型官方已排期关停。
+    legacyModelMap: {
+      'gpt-5.6-luna': 'gpt-6-luna',
+      'gpt-5.6-terra': 'gpt-6.1-terra',
+      'gpt-5.6-sol': 'gpt-6.1-sol',
+      'gpt-4.1': 'gpt-6-luna',
+      'gpt-4.1-mini': 'gpt-6-luna',
+      'gpt-4o': 'gpt-6-luna',
+      'gpt-4o-mini': 'gpt-6-luna',
+      'gpt-4o-mini-transcribe': 'gpt-transcribe',
+      'gpt-4o-transcribe': 'gpt-transcribe',
+      'whisper-1': 'gpt-transcribe',
+    },
   },
   {
     id: 'claude',
     name: 'Claude',
     baseUrl: 'https://api.anthropic.com',
-    model: 'claude-sonnet-5',
+    model: 'claude-sonnet-5-5',
     chatProtocol: 'anthropic-messages',
     chatPath: 'v1/messages',
     modelsPath: 'v1/models',
     transcribeModel: '',
     supportsTranscribe: false,
-    hint: 'Anthropic 官方 Messages API；使用 x-api-key 和 anthropic-version 请求头。',
+    hint: 'Anthropic 官方 Messages API；使用 x-api-key 和 anthropic-version 请求头。高频翻译可选 Haiku 5.5，更快更省。',
     preferredAuthMode: 'apiKey',
     apiKeyHeader: 'x-api-key',
     apiKeyScheme: 'raw',
-    modelOptions: ['claude-sonnet-5', 'claude-opus-5', 'claude-fable-5', 'claude-haiku-4-5'],
+    modelOptions: ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-fable-5-1', 'claude-haiku-5-5'],
     legacyModelMap: {
-      'claude-3-5-sonnet-20241022': 'claude-sonnet-5',
-      'claude-3-7-sonnet-latest': 'claude-sonnet-5',
+      'claude-3-5-sonnet-20241022': 'claude-sonnet-5-5',
+      'claude-3-7-sonnet-latest': 'claude-sonnet-5-5',
+      'claude-sonnet-5': 'claude-sonnet-5-5',
+      'claude-opus-5': 'claude-opus-5-5',
+      'claude-fable-5': 'claude-fable-5-1',
+      'claude-haiku-4-5': 'claude-haiku-5-5',
     },
   },
   {
     id: 'deepseek',
     name: 'DeepSeek',
     baseUrl: 'https://api.deepseek.com',
-    model: 'deepseek-v4-flash',
+    model: 'deepseek-flash',
     chatProtocol: 'openai-chat',
     chatPath: 'chat/completions',
     modelsPath: 'models',
     transcribeModel: '',
     supportsTranscribe: false,
-    hint: 'DeepSeek OpenAI 兼容接口；V4 Flash 适合高频翻译，V4 Pro 适合更复杂文本。',
+    hint: 'DeepSeek OpenAI 兼容接口；Flash（V4.1）适合高频翻译，V4 Pro 适合更复杂文本。翻译请求会关闭思考模式。',
     preferredAuthMode: 'apiKey',
-    modelOptions: ['deepseek-v4-flash', 'deepseek-v4-pro'],
+    modelOptions: ['deepseek-flash', 'deepseek-v4-pro'],
     legacyModelMap: {
-      'deepseek-chat': 'deepseek-v4-flash',
-      'deepseek-reasoner': 'deepseek-v4-flash',
+      'deepseek-chat': 'deepseek-flash',
+      'deepseek-reasoner': 'deepseek-flash',
+      'deepseek-v4-flash': 'deepseek-flash',
     },
   },
   {
@@ -111,7 +121,7 @@ export const PROVIDERS: ProviderPreset[] = [
     chatPath: 'chat/completions',
     transcribeModel: '',
     supportsTranscribe: false,
-    hint: '智谱官方 OpenAI 兼容接口。默认国际站 api.z.ai；国内开放平台或 Coding Plan 可改 Base URL。高频翻译建议 Flash，复杂文本可用 GLM-5.3。',
+    hint: '智谱官方 OpenAI 兼容接口。默认国际站 api.z.ai；国内开放平台或 Coding Plan 可改 Base URL。高频翻译建议 GLM-4.7-Flash（免费，翻译时关闭思考）；GLM-5.3 / 5.3-Flash 强制思考，更强但更慢。',
     preferredAuthMode: 'apiKey',
     configurableBaseUrl: true,
     modelOptions: [
@@ -135,22 +145,29 @@ export const PROVIDERS: ProviderPreset[] = [
     id: 'qwen',
     name: '通义千问',
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    model: 'qwen-flash',
+    model: 'qwen3.8-flash',
     chatProtocol: 'openai-chat',
     chatPath: 'chat/completions',
     modelsPath: 'models',
     transcribeModel: '',
     supportsTranscribe: false,
-    hint: '阿里云 DashScope 的 OpenAI 兼容接口。默认国内北京节点；国际站把 Base URL 改成 dashscope-intl.aliyuncs.com/compatible-mode/v1。',
+    hint: '阿里云 DashScope 的 OpenAI 兼容接口。默认国内北京节点；国际站把 Base URL 改成 dashscope-intl.aliyuncs.com/compatible-mode/v1。高频翻译建议 Flash，翻译请求会关闭思考模式。',
     preferredAuthMode: 'apiKey',
     configurableBaseUrl: true,
-    modelOptions: ['qwen-flash', 'qwen-plus', 'qwen-max', 'qwen-turbo'],
+    modelOptions: ['qwen3.8-flash', 'qwen3.7-plus', 'qwen3.8-max'],
+    // qwen-flash / plus / max 已归入旧版、不再推荐；qwen-turbo 已下线。
+    legacyModelMap: {
+      'qwen-flash': 'qwen3.8-flash',
+      'qwen-plus': 'qwen3.7-plus',
+      'qwen-max': 'qwen3.8-max',
+      'qwen-turbo': 'qwen3.8-flash',
+    },
   },
   {
     id: 'gemini',
     name: 'Gemini',
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    model: 'gemini-3.7-flash',
+    model: 'gemini-3.8-flash',
     chatProtocol: 'openai-chat',
     chatPath: 'chat/completions',
     modelsPath: 'models',
@@ -158,17 +175,21 @@ export const PROVIDERS: ProviderPreset[] = [
     supportsTranscribe: false,
     hint: 'Google Gemini 的 OpenAI 兼容接口；使用 Authorization Bearer 鉴权。',
     preferredAuthMode: 'apiKey',
-    modelOptions: ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite'],
+    modelOptions: ['gemini-3.8-flash', 'gemini-3.5-flash-lite'],
     legacyModelMap: {
-      'gemini-2.0-flash-exp': 'gemini-3.7-flash',
-      'gemini-2.0-flash': 'gemini-3.7-flash',
+      'gemini-2.0-flash-exp': 'gemini-3.8-flash',
+      'gemini-2.0-flash': 'gemini-3.8-flash',
+      'gemini-2.5-flash': 'gemini-3.8-flash',
+      'gemini-3.5-flash': 'gemini-3.8-flash',
+      'gemini-3.6-flash': 'gemini-3.8-flash',
+      'gemini-3.7-flash': 'gemini-3.8-flash',
     },
   },
   {
     id: 'grok',
     name: 'Grok（xAI）',
     baseUrl: 'https://api.x.ai',
-    model: 'grok-4.6',
+    model: 'grok-4.7',
     chatProtocol: 'openai-chat',
     chatPath: 'v1/chat/completions',
     modelsPath: 'v1/models',
@@ -179,10 +200,14 @@ export const PROVIDERS: ProviderPreset[] = [
     supportsTranscribe: true,
     hint: 'xAI 官方接口；支持 Grok 文本模型和无需模型名的 /v1/stt 语音转写。',
     preferredAuthMode: 'apiKey',
-    modelOptions: ['grok-4.6', 'grok-4.5', 'grok-4.3'],
+    modelOptions: ['grok-4.7'],
     legacyModelMap: {
-      'grok-beta': 'grok-4.6',
-      'grok-4-latest': 'grok-4.6',
+      'grok-beta': 'grok-4.7',
+      'grok-2-latest': 'grok-4.7',
+      'grok-4-latest': 'grok-4.7',
+      'grok-4.3': 'grok-4.7',
+      'grok-4.5': 'grok-4.7',
+      'grok-4.6': 'grok-4.7',
     },
   },
   {
@@ -236,17 +261,17 @@ export const PROVIDERS: ProviderPreset[] = [
     projectKeyHeader: 'Authorization',
     projectKeyScheme: 'bearer',
     modelOptions: [
-      'gpt-5.6-luna',
-      'gpt-5.6-terra',
-      'gpt-5.6-sol',
-      'claude-sonnet-5',
-      'gemini-3.7-flash',
-      'grok-4.6',
-      'deepseek-v4-flash',
+      'gpt-6-luna',
+      'gpt-6.1-terra',
+      'gpt-6.1-sol',
+      'claude-sonnet-5-5',
+      'gemini-3.8-flash',
+      'grok-4.7',
+      'deepseek-flash',
       'glm-4.7-flash',
       'glm-5.3',
-      'qwen-flash',
-      'qwen-plus',
+      'qwen3.8-flash',
+      'qwen3.7-plus',
     ],
   },
   {
@@ -267,16 +292,17 @@ export const PROVIDERS: ProviderPreset[] = [
     configurableAuth: true,
     configurableBaseUrl: true,
     modelOptions: [
-      'gpt-5.6-luna',
-      'claude-sonnet-5',
-      'gemini-3.7-flash',
-      'grok-4.6',
-      'deepseek-v4-flash',
+      'gpt-6-luna',
+      'claude-sonnet-5-5',
+      'gemini-3.8-flash',
+      'grok-4.7',
+      'deepseek-flash',
       'glm-4.7-flash',
       'glm-5.3',
-      'qwen-flash',
+      'qwen3.8-flash',
     ],
-    transcribeModelOptions: ['gpt-4o-mini-transcribe', 'gpt-4o-transcribe', 'whisper-1'],
+    // whisper-1 仍是多数自建/第三方转写服务的通用模型名，保留
+    transcribeModelOptions: ['gpt-transcribe', 'whisper-1'],
   },
   {
     id: 'custom-anthropic',
@@ -297,9 +323,9 @@ export const PROVIDERS: ProviderPreset[] = [
     projectKeyHeader: 'Authorization',
     projectKeyScheme: 'bearer',
     modelOptions: [
-      'claude-sonnet-5',
-      'claude-opus-5',
-      'claude-haiku-4-5',
+      'claude-sonnet-5-5',
+      'claude-opus-5-5',
+      'claude-haiku-5-5',
       'MiniMax-M3',
       'MiniMax-M3.1-Flash',
     ],
@@ -328,6 +354,30 @@ export function getProvider(id: string): ProviderPreset {
 export function normalizeProviderModel(providerId: string, model: string): string {
   const provider = getProvider(providerId);
   return provider.legacyModelMap?.[model] ?? model;
+}
+
+/**
+ * 翻译是短文本高频请求，新一代模型默认开启思考，会明显拖慢速度、多耗 token。
+ * 只对官方支持关闭/压低思考的厂商追加参数；网关与自定义接口原样透传，不猜参数。
+ */
+export function translationBodyExtras(providerId: string, model: string): Record<string, unknown> {
+  const id = model.trim().toLowerCase();
+  switch (normalizeProviderId(providerId)) {
+    case 'deepseek':
+      return { thinking: { type: 'disabled' } };
+    case 'qwen':
+      return { enable_thinking: false };
+    case 'zhipu':
+      // GLM-5.3 / 5.3-Flash 是强制思考，关不掉，不发参数
+      return id.startsWith('glm-5.3') ? {} : { thinking: { type: 'disabled' } };
+    case 'claude':
+      // Claude 5 系列的思考无法关闭，只能压低 effort；Haiku 4.5 等旧模型不认 effort，传了会 400
+      return /^claude-(opus|sonnet|haiku|fable)-5/.test(id)
+        ? { output_config: { effort: 'low' } }
+        : {};
+    default:
+      return {};
+  }
 }
 
 export function getProviderSeedSettings(id: string): ProviderSeedSettings {

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import VersionCenter from '~/components/VersionCenter';
 import { LANGUAGES } from '~/lib/langs';
+import { resolveListSync } from '~/lib/list-sync';
 import { sendExtension } from '~/lib/messaging';
 import {
   getProvider,
@@ -21,6 +22,11 @@ export default function App() {
   const [manualModel, setManualModel] = useState(false);
   const [manualTranscribeModel, setManualTranscribeModel] = useState(false);
   const [revealSecret, setRevealSecret] = useState(false);
+  // 上次与存储对齐的话术/标签。WhatsApp 页也能改它们，靠它区分「外部改动」和「自己保存的回声」。
+  const syncedRef = useRef<Pick<AppState, 'templates' | 'tagPalette'>>({
+    templates: DEFAULT_STATE.templates,
+    tagPalette: DEFAULT_STATE.tagPalette,
+  });
 
   const provider = useMemo(
     () => getProvider(state.settings.providerId),
@@ -53,6 +59,10 @@ export default function App() {
     void sendExtension({ type: 'WAMOFA_GET_PRIVATE' })
       .then((res) => {
         if (res.ok && 'privateState' in res) {
+          syncedRef.current = {
+            templates: res.privateState.templates,
+            tagPalette: res.privateState.tagPalette,
+          };
           const normalizedId = normalizeProviderId(res.privateState.settings.providerId);
           if (normalizedId !== res.privateState.settings.providerId) {
             const defaults = getProviderSeedSettings(normalizedId);
@@ -74,16 +84,45 @@ export default function App() {
       .finally(() => setLoaded(true));
   }, []);
 
+  // 选项页开着时 WhatsApp 页可能增删话术/标签；不跟进的话，这里任何一次保存都会用旧快照把它们冲掉。
+  useEffect(() => {
+    const onChanged = (
+      changes: Record<string, Browser.storage.StorageChange>,
+      areaName: string,
+    ) => {
+      const stored = changes.wamofa?.newValue as Partial<AppState> | undefined;
+      if (areaName !== 'local' || !stored) return;
+      const synced = syncedRef.current;
+      const templates = Array.isArray(stored.templates) ? stored.templates : synced.templates;
+      const tagPalette = Array.isArray(stored.tagPalette) ? stored.tagPalette : synced.tagPalette;
+      syncedRef.current = { templates, tagPalette };
+      setState((prev) => ({
+        ...prev,
+        templates: resolveListSync(prev.templates, templates, synced.templates),
+        tagPalette: resolveListSync(prev.tagPalette, tagPalette, synced.tagPalette),
+        chats: stored.chats ?? prev.chats,
+      }));
+    };
+    browser.storage.onChanged.addListener(onChanged);
+    return () => browser.storage.onChanged.removeListener(onChanged);
+  }, []);
+
   useEffect(() => {
     if (!status) return;
     const timer = window.setTimeout(() => setStatus(''), 3600);
     return () => window.clearTimeout(timer);
   }, [status]);
 
+  /** 所有落盘都经过这里：先记下本次写入的话术/标签，存储回声到来时才不会被当成外部改动。 */
+  function savePrivate(next: AppState) {
+    syncedRef.current = { templates: next.templates, tagPalette: next.tagPalette };
+    return sendExtension({ type: 'WAMOFA_SAVE_PRIVATE', state: next });
+  }
+
   async function save(next: AppState, message = '已保存') {
     setState(next);
     try {
-      const res = await sendExtension({ type: 'WAMOFA_SAVE_PRIVATE', state: next });
+      const res = await savePrivate(next);
       if (!res.ok) {
         setStatus(res.error);
         return;
@@ -122,7 +161,7 @@ export default function App() {
   async function loadModelList() {
     setLoadingModels(true);
     try {
-      const persist = await sendExtension({ type: 'WAMOFA_SAVE_PRIVATE', state });
+      const persist = await savePrivate(state);
       if (!persist.ok) {
         setStatus(persist.error);
         return;
@@ -145,7 +184,7 @@ export default function App() {
   async function test() {
     setTesting(true);
     try {
-      const persist = await sendExtension({ type: 'WAMOFA_SAVE_PRIVATE', state });
+      const persist = await savePrivate(state);
       if (!persist.ok) {
         setStatus(persist.error);
         return;

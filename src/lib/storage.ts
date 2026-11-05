@@ -152,9 +152,13 @@ function mergeState(raw: unknown): AppState {
         ? parsedSettings.baseUrl ?? defaults.baseUrl
         : defaults.baseUrl,
       model: providerWasMigrated ? defaults.model : normalizedModel,
+      // 转写模型同样走 legacyModelMap：官方停用旧转写模型后，已保存的配置会直接报错
       transcribeModel: providerWasMigrated
         ? defaults.transcribeModel
-        : parsedSettings.transcribeModel ?? defaults.transcribeModel,
+        : normalizeProviderModel(
+            normalizedProviderId,
+            parsedSettings.transcribeModel ?? defaults.transcribeModel,
+          ),
     },
     templates: resolveTemplates(parsed),
     tagPalette: Array.isArray(parsed.tagPalette)

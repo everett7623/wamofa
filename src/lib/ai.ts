@@ -1,5 +1,5 @@
 import { langLabel } from '~/lib/langs';
-import { getProvider } from '~/lib/providers';
+import { getProvider, translationBodyExtras } from '~/lib/providers';
 import type { AiSettings } from '~/lib/types';
 
 const TIMEOUT_TEXT_MS = 45_000;
@@ -93,6 +93,14 @@ function credentialValue(token: string, scheme: 'bearer' | 'raw'): string {
   return scheme === 'raw' ? token : `Bearer ${token}`;
 }
 
+function isAnthropicOfficial(baseUrl: string): boolean {
+  try {
+    return new URL(baseUrl.trim()).hostname === 'api.anthropic.com';
+  } catch {
+    return false;
+  }
+}
+
 function buildAuthHeaders(settings: AiSettings, forForm = false): HeadersInit {
   const provider = getProvider(settings.providerId);
   const headers: Record<string, string> = {};
@@ -113,6 +121,11 @@ function buildAuthHeaders(settings: AiSettings, forForm = false): HeadersInit {
 
   if (provider.chatProtocol === 'anthropic-messages') {
     headers['anthropic-version'] = '2023-06-01';
+    // 扩展后台的请求自带 Origin: chrome-extension://…，官方 API 只放行声明了此头的跨域请求，
+    // 否则一律 401。只发给官方域名：有第三方兼容网关遇到这个头会报错。
+    if (isAnthropicOfficial(settings.baseUrl)) {
+      headers['anthropic-dangerous-direct-browser-access'] = 'true';
+    }
   }
 
   return headers;
@@ -203,6 +216,7 @@ export async function translateText(
   requireTextSettings(settings);
   const provider = getProvider(settings.providerId);
   const system = translatorPrompt(langLabel(targetLang));
+  const extras = translationBodyExtras(provider.id, settings.model);
   const body =
     provider.chatProtocol === 'anthropic-messages'
       ? {
@@ -211,6 +225,7 @@ export async function translateText(
           system,
           messages: [{ role: 'user', content: text }],
           stream: false,
+          ...extras,
         }
       : {
           model: settings.model.trim(),
@@ -219,6 +234,7 @@ export async function translateText(
             { role: 'user', content: text },
           ],
           stream: false,
+          ...extras,
         };
 
   try {
@@ -258,8 +274,10 @@ export async function listModels(settings: AiSettings): Promise<string[]> {
     return provider.modelOptions ?? [];
   }
 
+  const modelsUrl = providerUrl(settings, provider.modelsPath);
   const res = await fetchWithTimeout(
-    providerUrl(settings, provider.modelsPath),
+    // Anthropic 协议的 /v1/models 默认每页只回 20 个，不带 limit 会漏掉后面的模型
+    provider.chatProtocol === 'anthropic-messages' ? `${modelsUrl}?limit=1000` : modelsUrl,
     {
       method: 'GET',
       headers: buildAuthHeaders(settings, true),

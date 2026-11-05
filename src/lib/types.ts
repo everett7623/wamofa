@@ -56,7 +56,7 @@ export const DEFAULT_SETTINGS: AiSettings = {
   projectKeyHeader: 'Authorization',
   projectKeyScheme: 'bearer',
   baseUrl: 'https://api.deepseek.com',
-  model: 'deepseek-v4-flash',
+  model: 'deepseek-flash',
   transcribeModel: '',
   incomingLang: 'zh',
   outgoingLang: 'en',

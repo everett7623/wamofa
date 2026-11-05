@@ -1,5 +1,24 @@
 # 更新日志
 
+## [0.5.0] - 2026-11-05
+
+### ⚠️ 使用变化
+- **已保存的旧模型自动换成同档新版**：读取配置时把上一代模型映射到当前一代，Key 与其它设置不变，打开选项页即显示新模型。OpenAI `gpt-5.6-luna / terra / sol` → `gpt-6-luna` / `gpt-6.1-terra` / `gpt-6.1-sol`，`gpt-4o` / `gpt-4.1` 系列（官方 2027-01-14 关停）→ `gpt-6-luna`；转写 `gpt-4o(-mini)-transcribe` / `whisper-1`（2027-02-26 关停）→ `gpt-transcribe`；Claude `claude-sonnet-5` / `opus-5` / `fable-5` / `haiku-4-5` → `claude-sonnet-5-5` / `opus-5-5` / `fable-5-1` / `haiku-5-5`；DeepSeek `deepseek-v4-flash` / `deepseek-chat` / `deepseek-reasoner` → `deepseek-flash`；Gemini 2.x、3.5、3.6、3.7 Flash → `gemini-3.8-flash`；Grok 4.3–4.6 → `grok-4.7`；千问 `qwen-flash` / `plus` / `max` / `turbo`（turbo 已下线）→ `qwen3.8-flash` / `qwen3.7-plus` / `qwen3.8-max`。Sub2API 与自定义接口按网关配置路由，不做映射
+- **翻译请求关闭或压低思考**：DeepSeek、GLM-4.x 发 `thinking: disabled`，千问发 `enable_thinking: false`，Claude 5 系列发 `output_config.effort: low`（Claude 5 的思考关不掉）。GLM-5.3 / 5.3-Flash 为强制思考，不发参数
+
+### ✨ 功能
+- **模型升级到当前一代**：OpenAI GPT-6（Luna / Terra / Sol / Astra）与 `gpt-transcribe`；Claude Sonnet 5.5 / Opus 5.5 / Fable 5.1 / Haiku 5.5；DeepSeek Flash（V4.1）；Gemini 3.8 Flash；Grok 4.7；千问 3.8 Flash / 3.7 Plus / 3.8 Max。GLM 与 MiniMax 已是最新，未改；Sub2API 与自定义接口的示例模型名同步更新
+
+### 🐛 Bug 修复
+- **Claude 官方接口在扩展里一律 401**：扩展后台发出的请求自带 `Origin: chrome-extension://…`，Anthropic 把带 Origin 的请求视为浏览器跨域请求，只放行声明了 `anthropic-dangerous-direct-browser-access: true` 的，此前没发，翻译、测试连接、读取模型列表全部被拒。现对 `api.anthropic.com` 自动加上；第三方 Anthropic 兼容网关不发，避免被其拒绝
+- **默认的 DeepSeek 每条翻译都在深度思考**：`deepseek-v4-flash` 已被官方路由到 V4.1 Flash，思考模式默认开启、effort 为 high；旧映射 `deepseek-chat`（非思考）→ `deepseek-v4-flash` 还把老用户从非思考切成了思考，翻译明显变慢、输出 token 增加。现显式关闭
+- **Claude「读取接口模型」最多只有 20 个**：Anthropic 协议的 `/v1/models` 默认每页 20 条，此前没带分页参数。现请求 `limit=1000`
+
+### 🐛 数据安全
+- **选项页保存会冲掉 WhatsApp 页新增的快捷回复 / 标签**：选项页只在打开时读一次配置，之后任何一次保存都把打开时的话术与标签快照整体写回（`chats` 早已保护，这两项没有），期间在 WhatsApp 快捷回复面板增删的话术会丢。现选项页监听存储变化，本地没有未保存的编辑时直接采用最新列表
+
+---
+
 ## [0.4.0] - 2026-10-22
 
 ### ✨ 功能
