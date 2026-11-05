@@ -11,8 +11,11 @@ import {
   DEFAULT_TEMPLATES,
   emptyChatMeta,
   LEGACY_ZH_TEMPLATES,
+  profileFromSettings,
+  type AiSettings,
   type AppState,
   type ChatMeta,
+  type ProviderProfile,
   type PublicState,
   type QuickReply,
 } from '~/lib/types';
@@ -110,8 +113,42 @@ function ensureMigration(): Promise<void> {
   return migrationQueue;
 }
 
-function mergeState(raw: unknown): AppState {
-  const parsed = (raw ?? {}) as Partial<AppState>;
+/**
+ * 把一条已保存的服务商档案补齐、归一：旧厂商 id、旧模型名都在这里映射，
+ * 缺失字段用该厂商的种子默认值补上，Key 去空白。非激活厂商的档案也走这里，
+ * 这样切过去时模型名已经是当前一代，不会拿着停用模型直接报错。
+ */
+function sanitizeProfile(id: string, value: Partial<ProviderProfile>): ProviderProfile {
+  const seed = getProviderSeedSettings(id);
+  return {
+    authMode: value.authMode === 'projectKey' ? 'projectKey' : 'apiKey',
+    apiKey: value.apiKey?.trim() ?? '',
+    projectKey: value.projectKey?.trim() ?? '',
+    projectKeyHeader: value.projectKeyHeader?.trim() || seed.projectKeyHeader,
+    projectKeyScheme: value.projectKeyScheme === 'raw' ? 'raw' : 'bearer',
+    baseUrl: value.baseUrl ?? seed.baseUrl,
+    model: normalizeProviderModel(id, value.model?.trim() || seed.model),
+    transcribeModel: normalizeProviderModel(id, value.transcribeModel ?? seed.transcribeModel),
+  };
+}
+
+/** 读取时归一所有已存档案；旧 id 合并到新 id 时，保留带凭据的那一份。 */
+function buildProviderProfiles(raw: unknown): Record<string, ProviderProfile> {
+  const parsed = (raw ?? {}) as Record<string, Partial<ProviderProfile>>;
+  const out: Record<string, ProviderProfile> = {};
+  for (const [key, value] of Object.entries(parsed)) {
+    if (!value || typeof value !== 'object') continue;
+    const id = normalizeProviderId(key);
+    const candidate = sanitizeProfile(id, value);
+    const existing = out[id];
+    if (!existing || (!existing.apiKey && !existing.projectKey)) {
+      out[id] = candidate;
+    }
+  }
+  return out;
+}
+
+function mergeSettings(parsed: Partial<AppState>): AiSettings {
   const parsedSettings = (parsed.settings ?? {}) as Partial<AppState['settings']>;
   const normalizedProviderId = normalizeProviderId(
     parsedSettings.providerId ?? DEFAULT_STATE.settings.providerId,
@@ -129,37 +166,47 @@ function mergeState(raw: unknown): AppState {
     ? parsedProjectKey || parsedApiKey
     : parsedApiKey || parsedProjectKey;
   return {
-    settings: {
-      ...DEFAULT_STATE.settings,
-      ...parsedSettings,
-      apiKey: !provider.configurableAuth && defaults.authMode === 'apiKey'
-        ? fixedCredential
-        : parsedSettings.apiKey ?? DEFAULT_STATE.settings.apiKey,
-      projectKey: !provider.configurableAuth && defaults.authMode === 'projectKey'
-        ? fixedCredential
-        : parsedSettings.projectKey ?? DEFAULT_STATE.settings.projectKey,
-      providerId: defaults.providerId,
-      authMode: provider.configurableAuth && !providerWasMigrated
-        ? parsedSettings.authMode ?? defaults.authMode
-        : defaults.authMode,
-      projectKeyHeader: provider.configurableAuth && !providerWasMigrated
-        ? parsedSettings.projectKeyHeader ?? defaults.projectKeyHeader
-        : defaults.projectKeyHeader,
-      projectKeyScheme: provider.configurableAuth && !providerWasMigrated
-        ? parsedSettings.projectKeyScheme ?? defaults.projectKeyScheme
-        : defaults.projectKeyScheme,
-      baseUrl: provider.configurableBaseUrl && !providerWasMigrated
-        ? parsedSettings.baseUrl ?? defaults.baseUrl
-        : defaults.baseUrl,
-      model: providerWasMigrated ? defaults.model : normalizedModel,
-      // 转写模型同样走 legacyModelMap：官方停用旧转写模型后，已保存的配置会直接报错
-      transcribeModel: providerWasMigrated
-        ? defaults.transcribeModel
-        : normalizeProviderModel(
-            normalizedProviderId,
-            parsedSettings.transcribeModel ?? defaults.transcribeModel,
-          ),
-    },
+    ...DEFAULT_STATE.settings,
+    ...parsedSettings,
+    apiKey: !provider.configurableAuth && defaults.authMode === 'apiKey'
+      ? fixedCredential
+      : parsedSettings.apiKey ?? DEFAULT_STATE.settings.apiKey,
+    projectKey: !provider.configurableAuth && defaults.authMode === 'projectKey'
+      ? fixedCredential
+      : parsedSettings.projectKey ?? DEFAULT_STATE.settings.projectKey,
+    providerId: defaults.providerId,
+    authMode: provider.configurableAuth && !providerWasMigrated
+      ? parsedSettings.authMode ?? defaults.authMode
+      : defaults.authMode,
+    projectKeyHeader: provider.configurableAuth && !providerWasMigrated
+      ? parsedSettings.projectKeyHeader ?? defaults.projectKeyHeader
+      : defaults.projectKeyHeader,
+    projectKeyScheme: provider.configurableAuth && !providerWasMigrated
+      ? parsedSettings.projectKeyScheme ?? defaults.projectKeyScheme
+      : defaults.projectKeyScheme,
+    baseUrl: provider.configurableBaseUrl && !providerWasMigrated
+      ? parsedSettings.baseUrl ?? defaults.baseUrl
+      : defaults.baseUrl,
+    model: providerWasMigrated ? defaults.model : normalizedModel,
+    // 转写模型同样走 legacyModelMap：官方停用旧转写模型后，已保存的配置会直接报错
+    transcribeModel: providerWasMigrated
+      ? defaults.transcribeModel
+      : normalizeProviderModel(
+          normalizedProviderId,
+          parsedSettings.transcribeModel ?? defaults.transcribeModel,
+        ),
+  };
+}
+
+function mergeState(raw: unknown): AppState {
+  const parsed = (raw ?? {}) as Partial<AppState>;
+  const settings = mergeSettings(parsed);
+  // 激活厂商的档案始终以归一后的 settings 为准，覆盖存档里可能过时的那份。
+  const providerProfiles = buildProviderProfiles(parsed.providerProfiles);
+  providerProfiles[settings.providerId] = profileFromSettings(settings);
+  return {
+    settings,
+    providerProfiles,
     templates: resolveTemplates(parsed),
     tagPalette: Array.isArray(parsed.tagPalette)
       ? parsed.tagPalette
@@ -174,8 +221,16 @@ export async function getState(): Promise<AppState> {
 }
 
 export async function setState(next: AppState): Promise<AppState> {
-  await browser.storage.local.set({ [KEY]: next });
-  return next;
+  // 落盘前把当前激活厂商的凭据/配置同步进档案表，任何写入路径都保持该厂商档案最新。
+  const synced: AppState = {
+    ...next,
+    providerProfiles: {
+      ...next.providerProfiles,
+      [next.settings.providerId]: profileFromSettings(next.settings),
+    },
+  };
+  await browser.storage.local.set({ [KEY]: synced });
+  return synced;
 }
 
 /** Serialize all read-modify-write storage updates to avoid lost races. */

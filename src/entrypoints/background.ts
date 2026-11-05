@@ -56,6 +56,9 @@ async function handle(
           apiKey: incoming.settings.apiKey.trim(),
           projectKey: incoming.settings.projectKey.trim(),
         },
+        // 各服务商的凭据档案只在选项页改动；缺省时沿用当前值。setState 会再把
+        // 激活厂商的这份档案对齐到上面 trim 过的 settings。
+        providerProfiles: incoming.providerProfiles ?? current.providerProfiles,
         templates: incoming.templates,
         tagPalette: incoming.tagPalette,
       }));

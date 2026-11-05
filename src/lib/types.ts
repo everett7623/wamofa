@@ -14,6 +14,22 @@ export interface AiSettings {
   defaultCountryCode: string;
 }
 
+/**
+ * 单个服务商记住的凭据与接口配置。切换服务商时整组存取，
+ * 这样每家各记各的 Key / Base URL / 模型，换来换去不用重填。
+ * 全局偏好（语言、自动翻译、默认区号）不在这里，始终跟随 settings。
+ */
+export interface ProviderProfile {
+  authMode: 'apiKey' | 'projectKey';
+  apiKey: string;
+  projectKey: string;
+  projectKeyHeader: string;
+  projectKeyScheme: 'bearer' | 'raw';
+  baseUrl: string;
+  model: string;
+  transcribeModel: string;
+}
+
 export interface QuickReply {
   id: string;
   title: string;
@@ -36,6 +52,8 @@ export interface ChatMeta {
 
 export interface AppState {
   settings: AiSettings;
+  /** 各服务商各自记住的凭据/接口配置，键为 providerId。只在 background 可读，不进 PublicState。 */
+  providerProfiles: Record<string, ProviderProfile>;
   templates: QuickReply[];
   tagPalette: TagDef[];
   chats: Record<string, ChatMeta>;
@@ -84,6 +102,7 @@ export const LEGACY_ZH_TEMPLATES: QuickReply[] = [
 
 export const DEFAULT_STATE: AppState = {
   settings: DEFAULT_SETTINGS,
+  providerProfiles: {},
   templates: DEFAULT_TEMPLATES,
   tagPalette: DEFAULT_TAGS,
   chats: {},
@@ -91,4 +110,18 @@ export const DEFAULT_STATE: AppState = {
 
 export function emptyChatMeta(): ChatMeta {
   return { note: '', tagIds: [] };
+}
+
+/** 从当前激活的 settings 抽出该服务商要记住的那部分配置。 */
+export function profileFromSettings(settings: AiSettings): ProviderProfile {
+  return {
+    authMode: settings.authMode,
+    apiKey: settings.apiKey,
+    projectKey: settings.projectKey,
+    projectKeyHeader: settings.projectKeyHeader,
+    projectKeyScheme: settings.projectKeyScheme,
+    baseUrl: settings.baseUrl,
+    model: settings.model,
+    transcribeModel: settings.transcribeModel,
+  };
 }

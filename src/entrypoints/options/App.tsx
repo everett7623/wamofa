@@ -9,8 +9,8 @@ import {
   normalizeProviderId,
   PROVIDERS,
 } from '~/lib/providers';
-import type { AppState, QuickReply, TagDef } from '~/lib/types';
-import { DEFAULT_STATE } from '~/lib/types';
+import type { AiSettings, AppState, QuickReply, TagDef } from '~/lib/types';
+import { DEFAULT_STATE, profileFromSettings } from '~/lib/types';
 
 export default function App() {
   const [state, setState] = useState<AppState>(DEFAULT_STATE);
@@ -145,16 +145,42 @@ export default function App() {
   }
 
   function applyProvider(id: string) {
-    const defaults = getProviderSeedSettings(id);
+    const normalizedId = normalizeProviderId(id);
     setRemoteModels([]);
     setManualModel(false);
     setManualTranscribeModel(false);
-    void save({
-      ...state,
-      settings: {
-        ...state.settings,
-        ...defaults,
-      },
+    // 用最新 state 计算：先把当前厂商的凭据/配置收进档案表，再载入目标厂商
+    // 已保存的档案；没存过则用种子默认值。语言、自动翻译、默认区号是全局偏好，保持不变。
+    setState((prev) => {
+      if (normalizedId === prev.settings.providerId) return prev;
+      const providerProfiles = {
+        ...prev.providerProfiles,
+        [prev.settings.providerId]: profileFromSettings(prev.settings),
+      };
+      const seed = getProviderSeedSettings(normalizedId);
+      const target = getProvider(normalizedId);
+      const saved = providerProfiles[normalizedId];
+      // 官方固定地址/鉴权的厂商始终用预设，不让旧存档盖掉内置官方值；
+      // 只有可配置的厂商才记住用户填的 Base URL / 鉴权方式。
+      const nextSettings: AiSettings = {
+        ...prev.settings,
+        providerId: normalizedId,
+        apiKey: saved?.apiKey ?? '',
+        projectKey: saved?.projectKey ?? '',
+        model: saved?.model ?? seed.model,
+        transcribeModel: saved?.transcribeModel ?? seed.transcribeModel,
+        baseUrl: target.configurableBaseUrl ? saved?.baseUrl ?? seed.baseUrl : seed.baseUrl,
+        authMode: target.configurableAuth ? saved?.authMode ?? seed.authMode : seed.authMode,
+        projectKeyHeader: target.configurableAuth
+          ? saved?.projectKeyHeader ?? seed.projectKeyHeader
+          : seed.projectKeyHeader,
+        projectKeyScheme: target.configurableAuth
+          ? saved?.projectKeyScheme ?? seed.projectKeyScheme
+          : seed.projectKeyScheme,
+      };
+      const next: AppState = { ...prev, settings: nextSettings, providerProfiles };
+      Promise.resolve().then(() => void save(next, '已切换服务商'));
+      return next;
     });
   }
 
