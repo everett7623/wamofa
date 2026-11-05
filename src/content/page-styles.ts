@@ -47,8 +47,14 @@ html.wamofa-translations-hidden .wamofa-result {
   position: relative;
   overflow: visible !important;
 }
-[data-pre-plain-text]:has(.wamofa-toolbar),
-.copyable-text:has(.wamofa-toolbar) {
+/* 工具栏绝对定位在气泡外侧，任何带 overflow:hidden 的祖先都会把它裁掉看不见。
+   纯文字气泡此前只放开了 message-in / data-pre-plain-text / copyable-text 三层；
+   但带文字说明的文档/图片、以及引用回复，说明文字还嵌在多出来的缩略图 / 引用容器里，
+   那一层没被放开，就把挂在说明上的翻译图标裁没了（带 PDF 说明的气泡即此情况）。
+   这里对「包含工具栏的所有祖先」统一放开裁剪，不依赖具体类名，覆盖整类嵌套容器。 */
+.message-in:has(.wamofa-toolbar) *:has(.wamofa-toolbar),
+.message-out:has(.wamofa-toolbar) *:has(.wamofa-toolbar),
+[data-testid="msg-container"]:has(.wamofa-toolbar) *:has(.wamofa-toolbar) {
   overflow: visible !important;
 }
 .wamofa-icon-btn {

@@ -16,7 +16,7 @@ export default defineConfig({
     name: 'WAMofa',
     description:
       'WhatsApp Web 助手：AI 翻译、客户备注标签、快捷回复、语音转写。本地存储，不群发。',
-    version: '0.5.1',
+    version: '0.5.2',
     homepage_url: 'https://wamofa.com',
     permissions: ['storage'],
     host_permissions: [
